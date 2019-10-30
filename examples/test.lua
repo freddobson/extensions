@@ -105,11 +105,14 @@ hunt.log("DNS lookup: " .. table.tostring(hunt.net.nslookup("www.google.com")))
 hunt.log("Reverse Lookup: " .. table.tostring(hunt.net.nslookup("8.8.8.8")))
 
 
+-- Test Web Client
 -- client = hunt.web.new("https://infocyte-support.s3.us-east-2.amazonaws.com/developer/infocytedevkit.exe")
 -- client:disable_tls_verification()
 -- client:download_file("C:/windows/temp/devkit2.exe")
 -- data = client:download_data()
 
+
+-- Test Process functions
 procs = hunt.process.list()
 hunt.log("ProcessList: " .. table.tostring(procs))
 for _, proc in pairs(procs) do
@@ -120,11 +123,11 @@ for _, proc in pairs(procs) do
 end
 
 hunt.log("Killing calc.exe")
-print(hunt.process.kill_process('C:\\windows\\system32\\calc.exe'))
-print(hunt.process.kill_process('Calculator'))
+hunt.process.kill_process('Calculator.exe')
 
+
+-- Test Registry functions
 regkey = '\\Registry\\User'
-
 r = hunt.registry.list_keys(regkey)
 hunt.log("Registry: " .. table.tostring(r))
 
@@ -132,6 +135,8 @@ for name,value in pairs(hunt.registry.list_values(regkey)) do
     print(name .. ": " .. value)
 end
 
+
+-- Test Yara functions
 rule = [[
 rule OffsetExample {
 	strings:
@@ -141,7 +146,6 @@ rule OffsetExample {
 		$mz at 0
 }
 ]]
-
 yara = hunt.yara.new()
 yara:add_rule(rule)
 path = [[C:\windows\system32\calc.exe]]
@@ -149,19 +153,19 @@ for _, signature in pairs(yara:scan(path)) do
     hunt.log("Found " .. signature .. " in file!")
 end
 
-
+-- Test Base64 and Hashing functions
 hunt.log("SHA1 file: " .. tostring(hunt.hash.sha1(path)))
 data = hunt.unbase64("dGVzdA==")
 -- t = hunt.hash.sha1_data(data)
 -- hunt.log("Sha1 data: " .. tostring(t))
 hunt.log('unbase64 ("test"): ' .. tostring(hunt.bytes_to_string(hunt.unbase64("dGVzdA=="))))
 
-
-recovery = hunt.recovery.s3(aws_id, aws_secret, s3_region, s3_bucket)
-print(recovery)
+-- Test Recovery Upload Options
 file = 'c:\\windows\\system32\\notepad.exe'
 temppath = os.getenv("TEMP") .. '\\test1234.zip'
 hunt.gzip(file, temppath)
 if  fs.exists(temppath) then hunt.log("Zip Succeeded") else hunt.log('Zip Failed') end
+
+s3 = hunt.recovery.s3(nil, nil, 'us-east-2', 'test-extensions')
 hunt.log('Uploading ' .. temppath .. ' to S3 Bucket [' ..s3_region .. ':' .. s3_bucket .. ']' )
-recovery.upload_file(temppath, 'evidence.bin')
+s3:upload_file(temppath, 'snarf/evidence.bin')
