@@ -2157,7 +2157,7 @@ rule win_files_operation {
 ]==]
 
 info_rules = [==[
-rule OffsetExample {
+rule YARAExample_MZ {
 	strings:
 		$mz = "MZ"
 
@@ -2193,15 +2193,14 @@ hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Doma
 
 
 -- Load Yara rules
-yara_info = hunt.yara.new()
-yara_info:add_rule(info_rules)
+yara_bad = hunt.yara.new()
+yara_bad:add_rule(bad_rules)
 
 yara_suspicious = hunt.yara.new()
 yara_suspicious:add_rule(suspicious_rules)
 
-yara_bad = hunt.yara.new()
-yara_bad:add_rule(bad_rules)
-
+yara_info = hunt.yara.new()
+yara_info:add_rule(info_rules)
 
 -- All OS-specific instructions should be behind an 'if' statement
 if hunt.env.is_windows() then
@@ -2224,17 +2223,17 @@ end
 -- Scan all paths with Yara signatures
 for i, path in ipairs(paths) do
     print('[i] Scanning ' .. path)
-    for _, signature in pairs(yara_info:scan(path)) do
-        hunt.log('Found Yara[INFO] ' .. signature .. ' in ' .. path .. '!')
-        lowrisk = true
+    for _, signature in pairs(yara_bad:scan(path)) do
+        hunt.log('Yara[BAD] <' .. signature .. '> in file: ' .. path)
+        bad = true
     end
     for _, signature in pairs(yara_suspicious:scan(path)) do
-        hunt.log('Found Yara[SUSPICIOUS] ' .. signature .. ' in ' .. path .. '!')
+        hunt.log('Yara[SUSPICIOUS] <' .. signature .. '> in file: ' .. path)
         suspicious = true
     end
-    for _, signature in pairs(yara_bad:scan(path)) do
-        hunt.log('Found Yara[BAD] ' .. signature .. ' in ' .. path .. '!')
-        bad = true
+    for _, signature in pairs(yara_info:scan(path)) do
+        hunt.log('Yara[INFO] <' .. signature .. '> in file: ' .. path)
+        lowrisk = true
     end
 end
 
@@ -2252,4 +2251,5 @@ elseif lowrisk then
 else
     hunt.good()
 end
-hunt.log("Result: Extension successfully executed on " .. hostname)
+
+hunt.verbose("Result: Extension successfully executed on " .. host_info:hostname())

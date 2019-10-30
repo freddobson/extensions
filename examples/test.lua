@@ -93,13 +93,13 @@ hunt.log("has_python(): " .. tostring(hunt.env.has_python()))
 hunt.log("has_python2(): " .. tostring(hunt.env.has_python2()))
 hunt.log("has_python3(): " .. tostring(hunt.env.has_python3()))
 
-hunt.log("OS (hunt.env.os): " .. hunt.env.os())
+hunt.log("OS (hunt.env.os): " .. tostring(hunt.env.os()))
 hunt.log("API: " .. tostring(hunt.net.api()))
 hunt.log("APIv4: " .. table.tostring(hunt.net.api_ipv4()))
--- hunt.log("APIv4: " .. table.print(hunt.net.api_ipv4()))
 
-hunt.log("os.getenv() temp: " .. os.getenv("TEMP"))
-hunt.log("os.getenv() name: " .. os.getenv("COMPUTERNAME"))
+
+hunt.log("os.getenv() temp: " .. tostring(os.getenv("TEMP")))
+hunt.log("os.getenv() name: " .. tostring(os.getenv("COMPUTERNAME")))
 
 hunt.log("DNS lookup: " .. table.tostring(hunt.net.nslookup("www.google.com")))
 hunt.log("Reverse Lookup: " .. table.tostring(hunt.net.nslookup("8.8.8.8")))
@@ -138,7 +138,7 @@ end
 
 -- Test Yara functions
 rule = [[
-rule OffsetExample {
+rule YARAExample_MZ {
 	strings:
 		$mz = "MZ"
 
@@ -150,7 +150,7 @@ yara = hunt.yara.new()
 yara:add_rule(rule)
 path = [[C:\windows\system32\calc.exe]]
 for _, signature in pairs(yara:scan(path)) do
-    hunt.log("Found " .. signature .. " in file!")
+    hunt.log("Found YARA Signature [" .. signature .. "] in file: " .. path .. "!")
 end
 
 -- Test Base64 and Hashing functions
@@ -166,6 +166,6 @@ temppath = os.getenv("TEMP") .. '\\test1234.zip'
 hunt.gzip(file, temppath)
 if  fs.exists(temppath) then hunt.log("Zip Succeeded") else hunt.log('Zip Failed') end
 
-s3 = hunt.recovery.s3(nil, nil, 'us-east-2', 'test-extensions')
+s3 = hunt.recovery.s3(aws_id, aws_secret, s3_region, s3_bucket)
 hunt.log('Uploading ' .. temppath .. ' to S3 Bucket [' ..s3_region .. ':' .. s3_bucket .. ']' )
 s3:upload_file(temppath, 'snarf/evidence.bin')
