@@ -122,6 +122,24 @@ hunt.log("Domain: " .. host_info:domain())
 
 #### Network
 
+**Examples:**
+```lua
+-- list IPs for a domain name
+for _, ip in pairs(hunt.net.nslookup("google.com")) do
+    -- output: "ip: 172.217.6.46"
+    -- output: "ip: 2607:f8b0:4005:804::200e"
+    hunt.log("ip: " .. ip)
+end
+```
+
+```lua
+-- list DNS for an IP 
+for _, dns in pairs(hunt.net.nslookup("8.8.8.8")) do
+    -- output: "dns: dns.google"
+    hunt.log("dns: " .. dns)
+end
+```
+
 | Function | Description |
 | --- | --- |
 | **hunt.net.api()** | Returns a string value of the HUNT instance URL the script is currently attached to. This can be empty if the script is being executed as a test or off-line scan. |
@@ -136,14 +154,21 @@ hunt.log("Domain: " .. host_info:domain())
 For web requests, you can instantiate a web client to perform http(s) methods. An optional proxy and header field is also available.
 The format for using a proxy is `user:password@proxy_address:port`.
 
-##### Example 1:
+**Example:**
 ```lua
+-- Fetch data from a web server
 client = hunt.web.new("https://my.domain.org")
+-- Use a proxy server
 client:proxy("myuser:password@10.11.12.88:8888")
+-- Custom header
 client:add_header("authorization", "mytokenvalue")
 
+-- Saves response body to a file
 client:download_file("./my_data_file.txt")
+-- Stores response body in a variable (table of bytes)
 data = client:download_data()
+-- Stores response body in a string variable
+data = client:download_string()
 ```
 
 | Function | Description |
@@ -161,14 +186,22 @@ data = client:download_data()
 
 #### Process
 
-**Example:**
+**Examples:**
 ```lua
+-- List running processes
 procs = hunt.process.list()
 for _, proc in pairs(procs) do
     hunt.log("Found pid " .. proc:pid() " .. " @ " .. proc:path())
     hunt.log("- Owned by: " .. proc:owner())
     hunt.log("- Started by: " .. proc:ppid())
     hunt.log("- Command Line: " .. proc:cmd_line())
+end
+```
+
+```lua
+-- Kill all "malware.exe" processes
+for _, pid in pairs(hunt.process.kill_process("malware.exe")) do
+    hunt.log("killed malware.exe running as " .. tostring(pid))
 end
 ```
 
@@ -184,9 +217,18 @@ These registry functions interact with the `Nt*` series of Windows APIs and
 therefore use `\Registry\Users` style of registry paths. These functions will
 return empty values when run on platforms other than Windows.
 
+**Examples:**
 ```lua
+-- list values in a key
 for name,value in pairs(hunt.registry.list_values("...")) do
     print(name .. ": " .. value)
+end
+```
+
+```lua
+-- list subkeys 
+for _,name in pairs(hunt.registry.list_keys("...")) do
+    print("subkey: " .. name)
 end
 ```
 
@@ -196,6 +238,24 @@ end
 | **hunt.registry.list_values(path: string)** | Returns a table of registry name/values pairs located at `path`. This will be empty on failure. All values are coerced into strings. |
 
 #### Hashing
+
+**Examples:**
+```lua
+-- Hash a file
+hash = hunt.hash.sha1('/bin/bash')
+hunt.log("/bin/bash: " .. hash)
+```
+
+```lua
+-- Hash a string
+-- (input data must be an "array" of bytes)
+some_data = "an important string to hash"
+-- convert the string to a table ("array") of bytes
+bytes = { string.byte(some_data, 1, -1) }
+hash = hunt.hash.sha1_data(bytes)
+-- output: "hashed: e70d27cd90d42fdd7674ac965d7d5fa56ca95fdc"
+hunt.log("hashed: " .. hash)
+```
 
 | Function | Description |
 | --- | --- |
@@ -211,7 +271,14 @@ end
 #### Recovery
 
 ```lua
+-- use s3 upload, with authentication
 recovery = hunt.recovery.s3('my_key_id', 'myaccesskey', 'us-east-2', 'my-bucket')
+recovery.upload_file('c:\\windows\\system32\\notepad.exe', 'evidence.bin')
+```
+
+```lua
+-- use s3 upload, without authentication (bucket must be writable without auth)
+recovery = hunt.recovery.s3(nil, nil, 'us-east-2', 'my-bucket')
 recovery.upload_file('c:\\windows\\system32\\notepad.exe', 'evidence.bin')
 ```
 
