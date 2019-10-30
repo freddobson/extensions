@@ -24,7 +24,7 @@ Get-ItemProperty HKLM:\SYSTEM\CurrentControlSet\services\eventlog\Security | sel
 Get-ItemProperty HKLM:\SYSTEM\CurrentControlSet\services\eventlog\System | select File
 
     4624 [Security] - Successful Logon (Network Type 3 Logon)
-	4720 [Security] - A user account was created
+    4720 [Security] - A user account was created
     4732/4728 [Security] - A member was added to a security-enabled group
     7045 [System] - Service Creation
     4688 [Security] - A new process has been created (Win2012R2+ has CLI)
@@ -67,7 +67,7 @@ hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Doma
 if hunt.env.is_windows() and hunt.env.has_powershell() then
   -- Insert your Windows code
 
-  result = "Test" -- filler [DELETE ME]
+  LogPath = [[C:\Windows\System32\winevt\Logs\Security.evtx]]
 
 elseif hunt.env.is_macos() then
     -- Insert your MacOS Code
