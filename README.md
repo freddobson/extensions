@@ -214,13 +214,13 @@ end
 
 #### Registry
 These registry functions interact with the Native (`Nt*`) Registry APIs and
-therefore use `\Registry\Users` style of registry paths. In this convention
-there are only two root keys to worry about: `Machine` and `User`.
+therefore use Windows kernel's `\Registry\User` style of registry paths. In this
+convention there are only two root keys to worry about: `Machine` and `User`.
 
-HKEY_USERS: `\Registry\User\`
-HKEY_LOCAL_MACHINE (HKLM): `\Registry\Machine\`
+- HKEY_USERS: `\Registry\User\`
+- HKEY_LOCAL_MACHINE (HKLM): `\Registry\Machine\`
 
-`HKLM:\\SOFTWARE\\MyApp` can be addressed with: `\Registry\Machine\SOFTWARE\MyApp`
+`HKEY_CURRENT_USER:\SOFTWARE\MyApp` can be addressed with: `\Registry\User\<user_sid>\SOFTWARE\MyApp`
 
 These functions will return empty values when run on platforms other than Windows.
 
@@ -228,7 +228,8 @@ These functions will return empty values when run on platforms other than Window
 **Examples:**
 ```lua
 -- list values in a specific HKLM runkey key
-for name,value in pairs(hunt.registry.list_values("\\Registry\\Machine\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\iTunesHelper")) do
+key = '\\Registry\\Machine\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\iTunesHelper'
+for name,value in pairs(hunt.registry.list_values(key)) do
     print(name .. ": " .. value)
 end
 ```
@@ -236,9 +237,10 @@ end
 ```lua
 -- Iterate through each user profile's and list their run keys
 -- (includes HKEY_CURRENT_USER and other user profiles)
-usersids = hunt.registry.list_keys("\\Registry\\User")
-for _,usersid in pairs(usersids) do
-    for _,name in pairs(hunt.registry.list_keys("\\Registry\\User\\" .. usersid .. "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run")) do
+user_sids = hunt.registry.list_keys("\\Registry\\User")
+for _,user_sid in pairs(user_sids) do
+    key = '\\Registry\\User\\' .. user_sid .. '\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+    for _,name in pairs(hunt.registry.list_keys(key)) do
         print("subkey: " .. name)
     end
 end
