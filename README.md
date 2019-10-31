@@ -17,11 +17,11 @@ into the Infocyte platform.
 
 ### Overview
 The Infocyte extension system is built on top of [Lua 5.3](https://www.lua.org),
-which provides an easy to deploy, cross platform, and feature-rich library of 
+which provides an easy to deploy, cross platform, and feature-rich library of
 built-in functions. This includes file system, string , I/O, math, operations
-(among others). Refer to the 
+(among others). Refer to the
 [Lua Reference Manual](https://www.lua.org/manual/5.3/contents.html) for
-detailed documentation on usage or you can click [here](#learn-lua) for Lua 
+detailed documentation on usage or you can click [here](#learn-lua) for Lua
 tutorials.
 
 In addition to the Lua standard library, Infocyte exposes capabilities
@@ -37,7 +37,7 @@ of the relevant interpreter on the host.
 There are currently two types of extensions supported: Collection & Action.
 
 ##### Collection
-Collection extensions extend what is collected or inspected at scan time. This 
+Collection extensions extend what is collected or inspected at scan time. This
 can be additional registry keys or files to be analyzed or YARA signatures to be
 used on the host-side. Threat statuses can be flagged based on your logic and
 text fields are available for arbitrary data collection up to 3MB in size. For
@@ -51,14 +51,14 @@ routines (like changing local logging configurations), or other installing
 3rd party tools.
 
 ### Usage
-After logging into your Infocyte instance (with an administrator role) simply navigate to `Admin->Extensions`. 
+After logging into your Infocyte instance (with an administrator role) simply navigate to `Admin->Extensions`.
 
-You can copy and paste an extension from this repository (check the 
+You can copy and paste an extension from this repository (check the
 [contrib folder](/contrib) for submitted extensions), or start from scratch
 and write your own.
 
 Hitting save will perform a syntax validation and if everything checks out, will
-save the newly created extension for use. To make the extension available to 
+save the newly created extension for use. To make the extension available to
 deploy during a scan, make sure you click the `Active` column to enable it as an
 option.
 
@@ -133,7 +133,7 @@ end
 ```
 
 ```lua
--- list DNS for an IP 
+-- list DNS for an IP
 for _, dns in pairs(hunt.net.nslookup("8.8.8.8")) do
     -- output: "dns: dns.google"
     hunt.log("dns: " .. dns)
@@ -181,7 +181,7 @@ data = client:download_string()
 | **download_data()** | Performs the HTTP request and returns the data as bytes |
 | **download_string()** | Performs the HTTP request and returns the data as a string |
 | **download_file(path: string)** | Performs the HTTP request and  saves the data to `path` |
-| **add_header(name: string, value: string)** | Adds an HTTP header to the client request 
+| **add_header(name: string, value: string)** | Adds an HTTP header to the client request
 
 
 #### Process
@@ -213,22 +213,34 @@ end
 
 
 #### Registry
-These registry functions interact with the `Nt*` series of Windows APIs and
-therefore use `\Registry\Users` style of registry paths. These functions will
-return empty values when run on platforms other than Windows.
+These registry functions interact with the Native (`Nt*`) Registry APIs and
+therefore use `\Registry\Users` style of registry paths. In this convention
+there are only two root keys to worry about: `Machine` and `User`.
+
+HKEY_USERS: `\Registry\User\`
+HKEY_LOCAL_MACHINE (HKLM): `\Registry\Machine\`
+
+`HKLM:\\SOFTWARE\\MyApp` can be addressed with: `\Registry\Machine\SOFTWARE\MyApp`
+
+These functions will return empty values when run on platforms other than Windows.
+
 
 **Examples:**
 ```lua
--- list values in a key
-for name,value in pairs(hunt.registry.list_values("...")) do
+-- list values in a specific HKLM runkey key
+for name,value in pairs(hunt.registry.list_values("\\Registry\\Machine\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\iTunesHelper")) do
     print(name .. ": " .. value)
 end
 ```
 
 ```lua
--- list subkeys 
-for _,name in pairs(hunt.registry.list_keys("...")) do
-    print("subkey: " .. name)
+-- Iterate through each user profile's and list their run keys
+-- (includes HKEY_CURRENT_USER and other user profiles)
+usersids = hunt.registry.list_keys("\\Registry\\User")
+for _,usersid in pairs(usersids) do
+    for _,name in pairs(hunt.registry.list_keys("\\Registry\\User\\" .. usersid .. "\\Software\\Microsoft\\Windows\\CurrentVersion\\Run")) do
+        print("subkey: " .. name)
+    end
 end
 ```
 
