@@ -5,7 +5,8 @@ s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
 
 
--- functions
+----------------------------------------------------
+-- SECTION: Functions
 
 fs = {}
 function fs.exists(path)
@@ -70,9 +71,8 @@ function table.tostring( tbl )
   return "{" .. table.concat( result, "," ) .. "}"
 end
 
-
+----------------------------------------------------
 -- Tests
---------------------------------------------------------------------------------
 
 print("(os.print) Starting Tests at " .. os.date("%x"))
 

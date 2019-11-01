@@ -9,9 +9,7 @@
 	Updated: 20190919 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 strings = {'Gerritz', 'test'}
 searchpath = [[C:\Users]]
 
@@ -19,8 +17,8 @@ searchpath = [[C:\Users]]
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
+-- #region initscript
 initscript = [==[
 #Requires -Version 3.0
 function Get-FileSignature {
@@ -176,6 +174,7 @@ Function Get-StringsMatch {
 }
 
 ]==]
+-- #endregion
 
 function make_psstringarray(list)
     -- Converts a lua list (table) into a string powershell list
@@ -190,7 +189,6 @@ end
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 host_info = hunt.env.host_info()
 os = host_info:os()
@@ -235,7 +233,6 @@ end
 -- SECTION 4: Results
 --	Set threat status to aggregate and stack results in the Infocyte app:
 --		Good, Low Risk, Unknown, Suspicious, or Bad
-----------------------------------------------------
 
 if output then
     hunt.suspicious()

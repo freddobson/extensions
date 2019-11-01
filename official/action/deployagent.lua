@@ -9,27 +9,25 @@
 
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
-agentDestination = os.getenv("TEMP").."/icagent.exe"
 regkey = nil
+
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 3: Actions
-----------------------------------------------------
 
 host_info = hunt.env.host_info()
 os = host_info:os()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
-myinstanceurl = hunt.net.api() -- "alpo1.infocyte.com"
+instanceurl = hunt.net.api() or "testextensions6.infocyte.com"
 hostname = host_info:hostname()
+
+agentDestination = os.getenv("TEMP")..os.tmpname()..".exe"
 
 -- Check for Agent
 agentinstalled = false
@@ -82,6 +80,5 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Output
-----------------------------------------------------
 
 hunt.log("Infocyte Agent has been installed successfully")

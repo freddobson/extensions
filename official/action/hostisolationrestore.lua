@@ -9,21 +9,20 @@
 
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
-OS = hunt.env.os()
-workingfolder = os.getenv("TEMP")
+
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 
 ----------------------------------------------------
 -- SECTION 3: Actions
-----------------------------------------------------
+
+host_info = hunt.env.host_info()
+os = host_info:os()
+hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
 if string.find(OS, "windows xp") then
@@ -41,5 +40,4 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Output
-----------------------------------------------------
 log("Host has been restored and is no longer isolated")

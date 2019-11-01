@@ -9,14 +9,11 @@
     Updated: 20191031
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 function reg_usersids()
     local output = {}
@@ -116,7 +113,6 @@ initscript = [==[
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
@@ -181,10 +177,11 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Results
-----------------------------------------------------
 for k,v in pairs(results) do
     print(k)
     print(keyboard_codes["00000409"])
     hunt.log("Keyboards: " .. keyboard_codes[k])
 end
 -- hunt.out(results)
+
+----------------------------------------------------

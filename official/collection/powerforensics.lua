@@ -10,15 +10,12 @@
 ]]--
 
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 initscript = [==[
 $n = Get-PackageProvider -name NuGet
@@ -27,7 +24,7 @@ if ($n.version.major -ne 2) {
 }
 if (-NOT (Get-Module PowerForensics)) {
     Write-Host "Installing PowerForensics"
-    Install-Module -name PowerForensics -Force -Scope CurrentUser
+    Install-Module -name PowerForensics -Scope CurrentUser -Force
 }
 
 function Get-ICMFT ([String]$outpath = "$env:temp\icmft.csv") {
@@ -51,7 +48,6 @@ end
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 host_info = hunt.env.host_info()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
@@ -80,14 +76,13 @@ hunt.gzip(temppath, outpath, nil)
 -- SECTION 4: Results
 --	Set threat status to aggregate and stack results in the Infocyte app:
 --		Good, Low Risk, Unknown, Suspicious, or Bad
-----------------------------------------------------
 
 -- Recover evidence to S3
 recovery = hunt.recovery.s3(nil, nil, s3_region, s3_bucket)
 s3path = host_info:hostname() .. '/mft.zip'
-hunt.log("Uploading MFT(sha1=".. hash .. ") to S3 bucket " .. s3_region .. ":" .. s3_bucket .. "/" .. s3path)
-recovery.upload_file(outpath, s3path)
-hunt.log("MFT uploaded to S3: " .. hash)
+hunt.verbose("Uploading MFT(sha1=".. hash .. ") to S3 bucket " .. s3_region .. ":" .. s3_bucket .. "/" .. s3path)
+recovery:upload_file(outpath, s3path)
+hunt.log("MFT uploaded to S3 with sha1: " .. hash)
 hunt.good()
 
 -- Cleanup

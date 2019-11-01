@@ -9,14 +9,11 @@
     Updated: 20190919 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 -- You can define shell scripts here if using any.
@@ -26,7 +23,6 @@ initscript = [==[
 
 ----------------------------------------------------
 -- SECTION 3: Actions
-----------------------------------------------------
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
@@ -59,8 +55,7 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Results
-----------------------------------------------------
-
 -- one or more log statements can be used to send resulting data or messages in
 -- text format to your Infocyte instance
+
 hunt.log("Result: Extension successfully executed on " .. hostname)

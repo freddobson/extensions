@@ -10,9 +10,7 @@
 	Updated: 20191024 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 
 -- Will recurse these paths
 paths = [==[
@@ -43,11 +41,10 @@ filename_regex = [==[
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 function lines_to_array(text)
     local strarray = {}
-    for line in text:gmatch'([^\r\n]*)([\r\n]*)' do
+    for line in text:gmatch'([^\n]*)([\n]*)' do
         if line ~= nil and line ~= '' then
             table.insert(strarray, line)
         end
@@ -66,6 +63,7 @@ function make_psstringarray(list)
     return psarray
 end
 
+-- #region initscript
 initscript = [==[
 #Requires -Version 3.0
 function Get-FileSignature {
@@ -281,10 +279,10 @@ Function Get-RansomwareArtifacts {
 }
 
 ]==]
+-- #endregion
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 host_info = hunt.env.host_info()
 os = host_info:os()
@@ -327,7 +325,6 @@ end
 -- SECTION 4: Results
 --	Set threat status to aggregate and stack results in the Infocyte app:
 --		Good, Low Risk, Unknown, Suspicious, or Bad
-----------------------------------------------------
 
 if output then
     hunt.bad()

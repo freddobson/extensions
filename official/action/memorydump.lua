@@ -11,9 +11,7 @@
 
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 OS = hunt.env.os() -- determine host OS
 myinstance = hunt.net.api() -- "alpo1.infocyte.com"
 computername = os.getenv("COMPUTERNAME")
@@ -23,12 +21,15 @@ destination = "S3"
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 3: Actions
-----------------------------------------------------
+
+host_info = hunt.env.host_info()
+os = host_info:os()
+hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+
 
 hunt.log("Memory Dump for "..OS.." Initiated")
 
@@ -65,5 +66,4 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Output
-----------------------------------------------------
 log("Memory dump completed. Evidence uploaded to "..destination)

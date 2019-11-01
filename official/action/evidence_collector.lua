@@ -9,9 +9,7 @@
     Updated: 20191018 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 aws_key_id = ''
 s3_secret = ''
 s3_region = 'us-east-2' -- US East (Ohio)
@@ -37,8 +35,6 @@ https://www.exabeam.com/siem-guide/siem-concepts/event-log/
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
-
 
 -- You can define shell scripts here if using any.
 initscript = [==[
@@ -54,7 +50,6 @@ function get-logs ($outpath="C:\windows\temp\logs.7z") {
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
@@ -90,7 +85,6 @@ end
 --
 --  In addition, one or more log statements can be used to send data in text
 --   format.
-----------------------------------------------------
 
 
 -- Set the returned threat status of the host based on the extension results

@@ -8,27 +8,13 @@
     Updated: 20191018 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 
-
+-- #region suspicious_rules
 suspicious_rules = [==[
 /*
-    This file is part of Manalyze.
-
-    Manalyze is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    Manalyze is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Manalyze.  If not, see <http://www.gnu.org/licenses/>.
+    These rules are part of Manalyze which is under them
+    GNU General Public License. See <http://www.gnu.org/licenses/>.
 */
 
 rule System_Tools
@@ -1287,21 +1273,6 @@ rule Obfuscated_Strings
 		any of them
 }
 
-rule Base64d_PE
-{
-	meta:
-		description = "Contains a base64-encoded executable"
-		author = "Florian Roth"
-		date = "2017-04-21"
-
-	strings:
-		$s0 = "TVqQAAIAAAAEAA8A//8AALgAAAA" wide ascii
-		$s1 = "TVqQAAMAAAAEAAAA//8AALgAAAA" wide ascii
-
-	condition:
-		any of them
-}
-
 rule Misc_Suspicious_Strings
 {
     meta:
@@ -1360,54 +1331,6 @@ rule inject_thread {
     condition:
         $c1 and $c2 and ( $c3 or $c4 ) and ( $c5 or $c6 or $c7 )
 }
-// Issue #101 - Commented because of High FP rate
-/*
-rule create_process {
-    meta:
-        author = "x0r"
-        description = "Create a new process"
-	version = "0.2"
-    strings:
-        $f1 = "Shell32.dll" nocase
-        $f2 = "Kernel32.dll" nocase
-        $c1 = "ShellExecute"
-        $c2 = "WinExec"
-        $c3 = "CreateProcess"
-        $c4 = "CreateThread"
-    condition:
-        ($f1 and $c1 ) or $f2 and ($c2 or $c3 or $c4)
-}
-*/
-
-// Issue #101 - Commented because of High FP rate
-/*
-rule persistence {
-    meta:
-        author = "x0r"
-        description = "Install itself for autorun at Windows startup"
-	version = "0.1"
-    strings:
-        $p1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" nocase
-        $p2 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce" nocase
-        $p3 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunServices" nocase
-        $p4 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce" nocase
-        $p5 = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" nocase
-        $p6 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run" nocase
-        $p7 = "SOFTWARE\\Microsoft\\Active Setup\\Installed Components\\" nocase
-        $p8 = "SOFTWARE\\Microsoft\\WindowsNT\\CurrentVersion\\Windows" nocase
-        $p9 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\SharedTaskScheduler" nocase
-        $p10 = "comfile\\shell\\open\\command" nocase
-        $p11 = "piffile\\shell\\open\\command" nocase
-        $p12 = "exefile\\shell\\open\\command" nocase
-        $p13 = "txtfile\\shell\\open\\command" nocase
-	$p14 = "\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
-        $f1 = "win.ini" nocase
-        $f2 = "system.ini" nocase
-        $f3 = "Start Menu\\Programs\\Startup" nocase
-    condition:
-        any of them
-}
-*/
 
 rule hijack_network {
     meta:
@@ -1784,25 +1707,6 @@ rule network_dga {
         all of ($dll*) and 1 of ($time*) and 1 of ($hash*) and 1 of ($net*)
 }
 
-
-rule bitcoin {
-    meta:
-        author = "x0r"
-        description = "Perform crypto currency mining"
-	version = "0.1"
-    strings:
-        $f1 = "OpenCL.dll" nocase
-        $f2 = "nvcuda.dll" nocase
-        $f3 = "opengl32.dll" nocase
-        $s1 = "cpuminer 2.2.2X-Mining-Extensions"
-        $s2 = "cpuminer 2.2.3X-Mining-Extensions"
-	    $s3 = "Ufasoft bitcoin-miner/0.20"
-	    $s4 = "bitcoin" nocase
-	    $s5 = "stratum" nocase
-    condition:
-        1 of ($f*) and 1 of ($s*)
-}
-
 rule certificate {
     meta:
         author = "x0r"
@@ -2155,7 +2059,9 @@ rule win_files_operation {
         $f1 and 3 of ($c*)
 }
 ]==]
+-- #endregion
 
+-- #region info_rules
 info_rules = [==[
 rule YARAExample_MZ {
 	strings:
@@ -2172,19 +2078,78 @@ rule url {
     condition:
         $url_regex
 }
+// High FP rate
+rule persistence {
+    meta:
+        author = "x0r"
+        description = "Install itself for autorun at Windows startup"
+	version = "0.1"
+    strings:
+        $p1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" nocase
+        $p2 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce" nocase
+        $p3 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunServices" nocase
+        $p4 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce" nocase
+        $p5 = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" nocase
+        $p6 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run" nocase
+        $p7 = "SOFTWARE\\Microsoft\\Active Setup\\Installed Components\\" nocase
+        $p8 = "SOFTWARE\\Microsoft\\WindowsNT\\CurrentVersion\\Windows" nocase
+        $p9 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\SharedTaskScheduler" nocase
+        $p10 = "comfile\\shell\\open\\command" nocase
+        $p11 = "piffile\\shell\\open\\command" nocase
+        $p12 = "exefile\\shell\\open\\command" nocase
+        $p13 = "txtfile\\shell\\open\\command" nocase
+	$p14 = "\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+        $f1 = "win.ini" nocase
+        $f2 = "system.ini" nocase
+        $f3 = "Start Menu\\Programs\\Startup" nocase
+    condition:
+        any of them
+}
 ]==]
+-- #endregion
 
+-- #region bad_rules
 bad_rules = [==[
+rule bitcoin {
+    meta:
+        author = "x0r"
+        description = "Perform crypto currency mining"
+	version = "0.1"
+    strings:
+        $f1 = "OpenCL.dll" nocase
+        $f2 = "nvcuda.dll" nocase
+        $f3 = "opengl32.dll" nocase
+        $s1 = "cpuminer 2.2.2X-Mining-Extensions"
+        $s2 = "cpuminer 2.2.3X-Mining-Extensions"
+	    $s3 = "Ufasoft bitcoin-miner/0.20"
+	    $s4 = "bitcoin" nocase
+	    $s5 = "stratum" nocase
+    condition:
+        1 of ($f*) and 1 of ($s*)
+}
+rule Base64d_PE
+{
+	meta:
+		description = "Contains a base64-encoded executable"
+		author = "Florian Roth"
+		date = "2017-04-21"
 
+	strings:
+		$s0 = "TVqQAAIAAAAEAA8A//8AALgAAAA" wide ascii
+		$s1 = "TVqQAAMAAAAEAAAA//8AALgAAAA" wide ascii
+
+	condition:
+		any of them
+}
 ]==]
+-- #endregion
+
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
@@ -2224,15 +2189,15 @@ end
 for i, path in ipairs(paths) do
     print('[i] Scanning ' .. path)
     for _, signature in pairs(yara_bad:scan(path)) do
-        hunt.log('Yara[BAD] <' .. signature .. '> in file: ' .. path)
+        hunt.log('[BAD] Yara matched [' .. signature .. '] in file: ' .. path)
         bad = true
     end
     for _, signature in pairs(yara_suspicious:scan(path)) do
-        hunt.log('Yara[SUSPICIOUS] <' .. signature .. '> in file: ' .. path)
+        hunt.log('[SUSPICIOUS] Yara matched [' .. signature .. '] in file: ' .. path)
         suspicious = true
     end
     for _, signature in pairs(yara_info:scan(path)) do
-        hunt.log('Yara[INFO] <' .. signature .. '> in file: ' .. path)
+        hunt.log('[INFO] Yara matched [' .. signature .. '] in file: ' .. path)
         lowrisk = true
     end
 end
@@ -2240,7 +2205,6 @@ end
 
 ----------------------------------------------------
 -- SECTION 4: Results
-----------------------------------------------------
 
 if bad then
     hunt.bad()
