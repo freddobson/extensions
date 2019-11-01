@@ -10,6 +10,33 @@
 
 -- SECTION 1: Inputs (Variables)
 
+
+-- This extension will yara scan running processes.
+-- Provide additional paths below
+if hunt.env.is_windows() then
+    additionalpaths = {
+        'c:\\windows\\system32\\calc.exe',
+        'c:\\windows\\system32\\notepad.exe'
+    }
+
+elseif hunt.env.is_macos() then
+    additionalpaths = {
+        '/bin/sh',
+        'bin/ls'
+    }
+
+elseif hunt.env.is_linux() then
+    additionalpaths = {
+        '/bin/cat',
+        'bin/tar'
+    }
+
+end
+
+----------------------------------------------------
+-- SECTION 2: Functions & Rules
+
+
 -- #region suspicious_rules
 suspicious_rules = [==[
 /*
@@ -2063,14 +2090,14 @@ rule win_files_operation {
 
 -- #region info_rules
 info_rules = [==[
-rule YARAExample_MZ {
+rule MZ_executable {
 	strings:
 		$mz = "MZ"
 
 	condition:
 		$mz at 0
 }
-rule url {
+rule embedded_url {
     meta:
         author = "Antonio S. <asanchez@plutec.net>"
     strings:
@@ -2079,7 +2106,7 @@ rule url {
         $url_regex
 }
 // High FP rate
-rule persistence {
+rule persistence_autorun {
     meta:
         author = "x0r"
         description = "Install itself for autorun at Windows startup"
@@ -2110,6 +2137,7 @@ rule persistence {
 
 -- #region bad_rules
 bad_rules = [==[
+import "pe"
 rule bitcoin {
     meta:
         author = "x0r"
@@ -2141,12 +2169,2519 @@ rule Base64d_PE
 	condition:
 		any of them
 }
+rule apt_auriga_biscuit
+{
+	 meta:
+		 description = "Auriga | biscuit"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "6B31344B40E2AF9C9EE3BA707558C14E"
+
+	 strings:
+
+	 	$pdb = "\\drizt\\projects\\auriga\\branches\\stone_~1\\server\\exe\\i386\\riodrv32.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_babar_pdb
+{
+	 meta:
+		 description = "APT Babar"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "9FFF114F15B86896D8D4978C0AD2813D"
+
+	 strings:
+
+	 	$pdb = "\\Documents and Settings\\admin\\Desktop\\Babar64\\Babar64\\ obj\\DllWrapper Release\\Release.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_blackenergy_pdb
+{
+	 meta:
+		 description = "APT Blackenergy PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "FD111A5496B6336B8503AE02FFA04E28"
+
+	 strings:
+
+	 	$pdb = "\\CB\\11X_Security\\Acrobat\\Installers\\BootStrapExe_Small\\Release\\Setup.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_nix_elf_derusbi
+{
+
+    meta:
+
+      description = "Rule to detect the APT Derusbi ELF file"
+      author = "Marc Rivero | McAfee ATR Team"
+
+    strings:
+        $ = "LxMain"
+        $ = "execve"
+        $ = "kill"
+        $ = "cp -a %s %s"
+        $ = "%s &"
+        $ = "dbus-daemon"
+        $ = "--noprofile"
+        $ = "--norc"
+        $ = "TERM=vt100"
+        $ = "/proc/%u/cmdline"
+        $ = "loadso"
+        $ = "/proc/self/exe"
+        $ = "Proxy-Connection: Keep-Alive"
+        $ = "Connection: Keep-Alive"
+        $ = "CONNECT %s"
+        $ = "HOST: %s:%d"
+        $ = "User-Agent: Mozilla/4.0"
+        $ = "Proxy-Authorization: Basic %s"
+        $ = "Server: Apache"
+        $ = "Proxy-Authenticate"
+        $ = "gettimeofday"
+        $ = "pthread_create"
+        $ = "pthread_join"
+        $ = "pthread_mutex_init"
+        $ = "pthread_mutex_destroy"
+        $ = "pthread_mutex_lock"
+        $ = "getsockopt"
+        $ = "socket"
+        $ = "setsockopt"
+        $ = "select"
+        $ = "bind"
+        $ = "shutdown"
+        $ = "listen"
+        $ = "opendir"
+        $ = "readdir"
+        $ = "closedir"
+        $ = "rename"
+
+    condition:
+        (uint32(0) == 0x4464c457f) and (all of them)
+}
+
+rule apt_nix_elf_derusbi_kernelModule
+{
+
+    meta:
+      description = "Rule to detect the Derusbi ELK Kernel module"
+      author = "Marc Rivero | McAfee ATR Team"
+
+    strings:
+        $ = "__this_module"
+        $ = "init_module"
+        $ = "unhide_pid"
+        $ = "is_hidden_pid"
+        $ = "clear_hidden_pid"
+        $ = "hide_pid"
+        $ = "license"
+        $ = "description"
+        $ = "srcversion="
+        $ = "depends="
+        $ = "vermagic="
+        $ = "current_task"
+        $ = "sock_release"
+        $ = "module_layout"
+        $ = "init_uts_ns"
+        $ = "init_net"
+        $ = "init_task"
+        $ = "filp_open"
+        $ = "__netlink_kernel_create"
+        $ = "kfree_skb"
+
+    condition:
+        (uint32(0) == 0x4464c457f) and (all of them)
+}
+
+rule apt_nix_elf_Derusbi_Linux_SharedMemCreation
+{
+
+    meta:
+      description = "Rule to detect Derusbi Linux Shared Memory creation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+    strings:
+        $byte1 = { B6 03 00 00 ?? 40 00 00 00 ?? 0D 5F 01 82 }
+
+    condition:
+        (uint32(0) == 0x464C457F) and (any of them)
+}
+
+rule apt_nix_elf_Derusbi_Linux_Strings
+{
+
+    meta:
+      description = "Rule to detect APT Derusbi Linux Strings"
+      author = "Marc Rivero | McAfee ATR Team"
+
+    strings:
+        $a1 = "loadso" wide ascii fullword
+        $a2 = "\nuname -a\n\n" wide ascii
+        $a3 = "/dev/shm/.x11.id" wide ascii
+        $a4 = "LxMain64" wide ascii nocase
+        $a5 = "# \\u@\\h:\\w \\$ " wide ascii
+        $b1 = "0123456789abcdefghijklmnopqrstuvwxyz" wide
+        $b2 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" wide
+        $b3 = "ret %d" wide fullword
+        $b4 = "uname -a\n\n" wide ascii
+        $b5 = "/proc/%u/cmdline" wide ascii
+        $b6 = "/proc/self/exe" wide ascii
+        $b7 = "cp -a %s %s" wide ascii
+        $c1 = "/dev/pts/4" wide ascii fullword
+        $c2 = "/tmp/1408.log" wide ascii fullword
+
+    condition:
+        uint32(0) == 0x464C457F and ((1 of ($a*) and 4 of ($b*)) or (1 of ($a*) and 1 of ($c*)) or 2 of ($a*) or all of ($b*))
+}
+
+rule apt_win_exe_trojan_derusbi
+{
+
+   meta:
+      description = "Rule to detect Derusbi Trojan"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+        $sa_1 = "USB" wide ascii
+        $sa_2 = "RAM" wide ascii
+        $sa_3 = "SHARE" wide ascii
+        $sa_4 = "HOST: %s:%d"
+        $sa_5 = "POST"
+        $sa_6 = "User-Agent: Mozilla"
+        $sa_7 = "Proxy-Connection: Keep-Alive"
+        $sa_8 = "Connection: Keep-Alive"
+        $sa_9 = "Server: Apache"
+        $sa_10 = "HTTP/1.1"
+        $sa_11 = "ImagePath"
+        $sa_12 = "ZwUnloadDriver"
+        $sa_13 = "ZwLoadDriver"
+        $sa_14 = "ServiceMain"
+        $sa_15 = "regsvr32.exe"
+        $sa_16 = "/s /u" wide ascii
+        $sa_17 = "rand"
+        $sa_18 = "_time64"
+        $sa_19 = "DllRegisterServer"
+        $sa_20 = "DllUnregisterServer"
+        $sa_21 = { 8b [5] 8b ?? d3 ?? 83 ?? 08 30 [5] 40 3b [5] 72 } // Decode Driver
+        $sb_1 = "PCC_CMD_PACKET"
+        $sb_2 = "PCC_CMD"
+        $sb_3 = "PCC_BASEMOD"
+        $sb_4 = "PCC_PROXY"
+        $sb_5 = "PCC_SYS"
+        $sb_6 = "PCC_PROCESS"
+        $sb_7 = "PCC_FILE"
+        $sb_8 = "PCC_SOCK"
+        $sc_1 = "bcdedit -set testsigning" wide ascii
+        $sc_2 = "update.microsoft.com" wide ascii
+        $sc_3 = "_crt_debugger_hook" wide ascii
+        $sc_4 = "ue8G5" wide ascii
+        $sd_1 = "NET" wide ascii
+        $sd_2 = "\\\\.\\pipe\\%s" wide ascii
+        $sd_3 = ".dat" wide ascii
+        $sd_4 = "CONNECT %s:%d" wide ascii
+        $sd_5 = "\\Device\\" wide ascii
+        $se_1 = "-%s-%04d" wide ascii
+        $se_2 = "-%04d" wide ascii
+        $se_3 = "FAL" wide ascii
+        $se_4 = "OK" wide ascii
+        $se_5 = "2.03" wide ascii
+        $se_6 = "XXXXXXXXXXXXXXX" wide ascii
+
+   condition:
+      (uint16(0) == 0x5A4D) and ( (all of ($sa_*)) or ((13 of ($sa_*)) and ( (5 of ($sb_*)) or (3 of ($sc_*)) or (all of ($sd_*)) or ( (1 of ($sc_*)) and (all of ($se_*)) ) ) ) )
+}
+
+rule elise_apt_pdb
+{
+	 meta:
+
+	 description = "Rule to detect Elise APT based on the PDB reference"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "6F81C7AF2A17ECE3CF3EFFC130CE197A"
+	 hash = "46877B923AE292C1E7C66E4F6F390AF7"
+	 hash = "268A4D1679AE0DA89AB4C16A3A89A8F1"
+	 hash = "A17CDAF23A84A3E410852B18BF5A47CD"
+	 hash = "36BB0B614D9118679A635735E53B32AB"
+
+	 strings:
+
+		 $pdb = "\\lstudio\\projects\\lotus\\elise\\Release\\EliseDLL\\i386\\EliseDLL.pdb"
+		 $pdb1 = "\\LStudio\\Projects\\Lotus\\Elise\\Release\\SetElise.pdb"
+		 $pdb2 = "\\lstudio\\projects\\lotus\\elise\\Release\\SetElise\\i386\\SetElise.pdb"
+		 $pdb3 = "\\LStudio\\Projects\\Lotus\\Elise\\Release\\Uninstaller.pdb"
+		 $pdb4 = "\\lstudio\\projects\\lotus\\evora\\Release\\EvoraDLL\\i386\\EvoraDLL.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_gdocupload_glooxmail
+{
+	 meta:
+		 description = "Rule to detect the tool gdocupload based on the PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "232D1BE2D8CBBD1CF57494A934628504"
+
+	 strings:
+
+	 	$pdb = "\\Project\\mm\\Webmail\\Bin\\gdocs.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_hanover_pdb
+{
+	 meta:
+	 description = "Rule to detect hanover samples based on PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "32C0785EDD5C9840F55A8D40E53ED3D9"
+	 hash = "0BBE6CAB66D76BAB4B44874DC3995D8F"
+	 hash = "350AD4DB3BCACF3C15117AFDDF0BD273"
+	 hash = "158FF697F8E609316E2A9FBE8111E12A"
+	 hash = "24874938F44D34AF71C91C011A5EBC45"
+	 hash = "3166C70BF2F70018E4702673520B333B"
+	 hash = "FE2CBAB386B534A10E71A5428FDE891A"
+	 hash = "4A06163A8E7B8EEAE835CA87C1AB6784"
+	 hash = "C7CB3EC000AC99DA19D46E008FD2CB73"
+	 hash = "2D7D9CB08DA17A312B64819770098A8E"
+	 hash = "74125D375B236059DC144567C9481F2A"
+	 hash = "EDDD399D3A1E3A55B97665104C83143B"
+	 hash = "54435E2D3369B4395A336389CF49A8BE"
+	 hash = "232F616AD81F4411DD1806EE3B8E7553"
+	 hash = "645801262AEB0E33D6CA1AF5DD323E25"
+
+
+ strings:
+
+	 $pdb = "\\andrew\\Key\\Release\\Keylogger_32.pdb"
+	 $pdb1 = "\\BACK_UP_RELEASE_28_1_13\\General\\KG\\Release\\winsvcr.pdb"
+	 $pdb2 = "\\BackUP-Important\\PacketCapAndUpload_Backup\\voipsvcr\\Release\\voipsvcr.pdb"
+	 $pdb3 = "\\BNaga\\kaam\\New_FTP_2\\Release\\ftpback.pdb"
+	 $pdb4 = "\\DD0\\DD\\u\\Release\\dataup.pdb"
+	 $pdb5 = "\\Documents and Settings\\Admin\\Desktop\\Newuploader\\Release\\Newuploader.pdb"
+	 $pdb6 = "\\Documents and Settings\\Admin\\Desktop\\Uploader Code\\Release\\Newuploader.pdb"
+	 $pdb7 = "\\Documents and Settings\\Administrator\\Desktop\\nn\\Release\\nn.pdb"
+	 $pdb8 = "\\smse\\Debug\\smse.pdb"
+	 $pdb9 = "\\Users\\admin\\Documents\\Visual Studio 2008\\Projects\\DNLDR-no-ip\\Release\\DNLDR.pdb"
+	 $pdb10 = "\\final exe\\check\\Release\\check.pdb"
+	 $pdb11 = "\\Projects\\Elance\\AppInSecurityGroup\\FtpBackup\\Release\\Backup.pdb"
+	 $pdb12 = "\\projects\\windows\\MailPasswordDecryptor\\Release\\MailPasswordDecryptor.pdb"
+	 $pdb13 = "\\final project backup\\UPLODER FTP BASED\\New folder\\Tron 1.2.1(Ftp n Startup)\\Release\\Http_t.pdb"
+
+ condition:
+
+ 	any of them
+}
+
+rule apt_hanover_appinbot_pdb
+{
+	 meta:
+
+		 description = "Rule to detect hanover appinbot samples based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "350AD4DB3BCACF3C15117AFDDF0BD273"
+		 hash = "49527C54A80E1BA698E0A8A7F7DD0A7D"
+		 hash = "36B3F39E7A11636ADB29FE36BEA875C4"
+		 hash = "BB9974D1C3617FCACF5D2D04D11D8C5A"
+		 hash = "4F82A6F5C80943AF7FACFCAFB7985C8C"
+		 hash = "4F82A6F5C80943AF7FACFCAFB7985C8C"
+		 hash = "549FED3D2DD640155697DEF39F7AB819"
+		 hash = "549FED3D2DD640155697DEF39F7AB819"
+		 hash = "36B3F39E7A11636ADB29FE36BEA875C4"
+		 hash = "3FD48F401EDF2E20F1CA11F3DAE3E2EF"
+		 hash = "3FD48F401EDF2E20F1CA11F3DAE3E2EF"
+		 hash = "8A4F2B2316A7D8D1938431477FEBF096"
+		 hash = "5BDA43ED20EA6A061E7332E2646DDC40"
+
+	 strings:
+
+		 $pdb = "\\BNaga\\backup_28_09_2010\\threads tut\\pen-backup\\BB_FUD_23\\Copy of client\\Copy of client\\appinbot_1.2_120308\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb1 = "\\BNaga\\SCode\\BOT\\MATRIX_1.2.2.0\\appinbot_1.2_120308\\Build\\Win32\\Release\\deleter.pdb"
+		 $pdb2 = "\\Documents and Settings\\Admin\\Desktop\\appinbot_1.2_120308\\appinclient\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb3 = "\\Documents and Settings\\Administrator\\Desktop\\Backup\\17_8_2011\\MATRIX_1.3.4\\ CLIENT\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb4 = "\\Documents and Settings\\Administrator\\Desktop\\Backup\\17_8_2011\\MATRIX_1.3.4\\ MATRIX_1.3.4\\CLIENT\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb5 = "\\Documents and Settings\\Administrator\\Desktop\\Backup\\17_8_2011\\MATRIX_1.3.4\\MATRIX_1.3.4\\ CLIENT\\Build\\Win32\\Release\\deleter.pdb"
+		 $pdb6 = "\\pen-backup\\Copy of client\\Copy of client\\appinbot_1.2_120308\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb7 = "\\pen-backup\\Copy of client\\Copy of client\\appinbot_1.2_120308\\Build\\Win32\\Release\\deleter.pdb"
+		 $pdb8 = "\\temp\\elance\\PROTOCOL_1.2\\Build\\Win32\\Release\\deleter.pdb"
+		 $pdb9 = "\\Users\\PRED@TOR\\Desktop\\appinbot_1.2_120308\\Build\\Win32\\Release\\deleter.pdb"
+		 $pdb10 = "\\Users\\PRED@TOR\\Desktop\\MODIFIED PROJECT LAB\\admin\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb11 = "\\Desktop backup\\Copy\\appinbot_1.2_120308\\Build\\Win32\\Release\\appinclient.pdb"
+		 $pdb12 = "\\Datahelp\\SCode\\BOT\\MATRIX_1.3.3\\CLIENT\\Build\\Win32\\Release\\appinclient.pdb"
+
+ 	condition:
+
+		any of them
+}
+
+rule apt_hanover_foler_pdb
+{
+	 meta:
+		 description = "Rule to detect hanover foler samples"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "07DEFD4BDA646B1FB058C3ABD2E1128E"
+		 hash = "01A7AF987D7B2F6F355E37C8580CB45A"
+		 hash = "118716061197EBCDAE25D330AEF97267"
+		 hash = "01A7AF987D7B2F6F355E37C8580CB45A"
+
+	 strings:
+
+		 $pdb = "\\Documents and Settings\\Administrator\\Desktop\\nn\\Release\\nn.pdb"
+		 $pdb1 = "\\Documents and Settings\\Administrator\\Desktop\\UsbP\\Release\\UsbP.pdb"
+		 $pdb2 = "\\Documents and Settings\\Administrator\\Desktop\\UsbP\\UsbP - u\\Release\\UsbP.pdb"
+		 $pdb3 = "\\Monthly Task\\August 2011\\USB Prop\\Usb Propagator.09-24\\nn\\Release\\nn.pdb"
+
+	 condition:
+
+	 	any of them
+}
+
+rule apt_hanover_linog_pdb
+{
+	 meta:
+		 description = "Rule to detect hanover linog samples based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "16C140FB61B6D22E02AA2B04748B5A34"
+		 hash = "8B1A208216613BF0B931252A98D5E2B8"
+
+	 strings:
+
+		 $pdb = "\\Users\\hp\\Desktop\\download\\Release\\download.pdb"
+		 $pdb1 = "\\Backup-HP-ABCD-PC\\download\\Release\\download.pdb"
+
+	 condition:
+
+	 	any of them
+}
+
+rule apt_hanover_ron_babylon_pdb
+{
+	 meta:
+		 description = "apt_hanover_ron_babylon"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "4B9F8CB4D87672611F11ACBE3E204249"
+		 hash = "9073B3DB88720A555AC511956A11ABF4"
+		 hash = "4B9F8CB4D87672611F11ACBE3E204249"
+		 hash = "81F84B1BDF6337A6E9C67BE2F51C50E0"
+		 hash = "E3CF3B1D2A695B9B5046692A607C8B30"
+		 hash = "80FBEBA3DA682570C4DB0482CD61B27D"
+		 hash = "0F98B7D1E113E5194D62BC8F20720A6B"
+		 hash = "376A0ED56366E4D35CECFCDBD70204B0"
+		 hash = "33840EE0B45F31081393F4462FB7A5B6"
+		 hash = "423519AE6C222AB54A2E82104FA45D12"
+		 hash = "0B88F197B4266E6B78EA0DCB9B3496E9"
+		 hash = "9E05D3F072469093542AFDDB1C2E874E"
+		 hash = "118ED6F8AA3F01428A95AE7BA8EF195C"
+		 hash = "5433804B7FC4D71C47AA2B3DA64DB77D"
+		 hash = "555D401E2D41ED00BC9436E3F458B52E"
+		 hash = "32D461D46D30C5D7C3F8D29DD0C8A8C4"
+		 hash = "7E74334C1495A3F6E195CE590C7D42E5"
+		 hash = "F6AB2B8ADBB2EB8A5D2F067841B434EF"
+		 hash = "331DB34E5F49AC1E318DDA2D01633B43"
+		 hash = "89D9851C162B98DB2C7A2B4F6A841B2A"
+		 hash = "DE81F0BDBD0EF134525BCE20B05ED664"
+		 hash = "0FBC01C38608D1B5849BF47492148588"
+		 hash = "4921C4C5CDD58CA32C5E957B63CF06CD"
+		 hash = "7244AAA1497D16E101AD1B6DEE05DFE3"
+		 hash = "5BC2744A40A333DC089AC04B6D71154E"
+		 hash = "0128F683E508C807EC76D5092EAAF22C"
+		 hash = "B48C2E42514AE1395E28FC94F6C8A6F1"
+		 hash = "A487E68A4C7EC11EBFF428BECC64A06C"
+		 hash = "E5479FAC44383CA1998EB416AA2128F0"
+		 hash = "30A920F8C9B52AA8C68501F502E128EB"
+		 hash = "FC0F714D16B1A72FCC6719151E85A8F0"
+		 hash = "9BCB294ECFBEBFF744E2A50B3F7099E6"
+		 hash = "0E9E46D068FEA834E12B2226CC8969FD"
+		 hash = "1CE331F0D11DC20A776759A60FB5B3F5"
+		 hash = "26FE2770B4F0892E0A24D4DDDBBFE907"
+		 hash = "C814E35D26848F910DD5106B886B9401"
+		 hash = "EEEF49FDB64A03A0C932973F117F9056"
+		 hash = "A8CAF03B50C424E9639580CDCC28507B"
+		 hash = "A1F8595D6D191DCBED3D257301869CE9"
+		 hash = "EA9BFC25FC5BDC0B1B96F7B2AF64F1AC"
+		 hash = "153AC7591B9326EE63CD36180D39665E"
+		 hash = "37448F390F10ECCF5745A6204947203A"
+		 hash = "770FC76673C3C2DAADD54C7AA7BA7CC3"
+		 hash = "BA790AC25BB9C3C6259FDFF8DCE07E5A"
+		 hash = "135A18C858BFDC5FC660F15D6E1FB147"
+		 hash = "D8DCF2A53505A61B5915F7A1D7440A2E"
+
+ strings:
+
+		 $pdb = "\\Users\\hp\\Desktop\\download\\Release\\download.pdb"
+		 $pdb1 = "\\26_10_2010\\demoMusic\\Release\\demoMusic.pdb"
+		 $pdb2 = "\\26_10_2010\\New_FTP_HttpWithLatestfile2\\Release\\httpbackup.pdb"
+		 $pdb3 = "\\26_10_2010\\New_FTP_HttpWithLatestfile2_FirstBlood_Released\\ New_FTP_HttpWithLatestfile2\\Release\\FirstBloodA1.pdb"
+		 $pdb4 = "\\app\\Http_t\\Release\\Crveter.pdb"
+		 $pdb5 = "\\BNaga\\kaam\\Appin SOFWARES\\RON 2.0.0\\Release\\Ron.pdb"
+		 $pdb6 = "\\BNaga\\kaam\\kaam\\NEW SOFWARES\\firstblood\\Release\\FirstBloodA1.pdb"
+		 $pdb7 = "\\BNaga\\kaam\\kaam\\New_FTP_HttpWithLatestfile2_FirstBlood_Released\\ New_FTP_HttpWithLatestfile2\\Release\\Ron.pdb"
+		 $pdb8 = "\\BNaga\\kaam\\New_FTP_HttpWithLatestfile2_FirstBlood_Released\\ New_FTP_HttpWithLatestfile2\\Release\\FirstBloodA1.pdb"
+		 $pdb9 = "\\BNaga\\My Office kaam\\Appin SOFWARES\\HTTP\\RON 2.0.0\\Release\\Ron.pdb"
+		 $pdb10 = "\\Documents and Settings\\abc\\Desktop\\Dragonball 1.0.2(WITHOUT DOWNLOAD LINK)\\Release\\Ron.pdb"
+		 $pdb11 = "\\Documents and Settings\\Administrator\\Desktop\\Feb 2012\\kmail(httpform1.1) 02.09\\Release\\kmail.pdb"
+		 $pdb12 = "\\MNaga\\My Office kaam\\Appin SOFWARES\\HTTP\\RON 2.0.0\\Release\\Ron.pdb"
+		 $pdb13 = "\\N\\kl\\Release\\winlsa.pdb"
+		 $pdb14 = "\\N\\sr\\Release\\waulct.pdb"
+		 $pdb15 = "\\Release\\wauclt.pdb"
+		 $pdb16 = "\\Users\\neeru rana\\Desktop\\Klogger- 30 may\\Klogger- 30 may\\Release\\Klogger.pdb"
+		 $pdb17 = "\\december task backup\\TRINITY PAYLOAD\\Dragonball 1.0.0(WITHOUT DOWNLOAD LINK)\\Release\\Ron.pdb"
+		 $pdb18 = "\\Documents and Settings\\appin\\Desktop\\New_FTP_1\\New_FTP_1\\Release\\HTTP_MyService.pdb"
+		 $pdb19 = "\\May Payload\\new keylogger\\Flashdance1.0.2\\kmail(http) 01.20\\Release\\kmail.pdb"
+		 $pdb20 = "\\Monthly Task\\September 2011\\HangOver 1.3.2 (Startup)\\Release\\Http_t.pdb"
+		 $pdb21 = "\\Sept 2012\\Keylogger\\Release\\Crveter.pdb"
+		 $pdb22 = "\\Datahelp\\keytest1\\keytest\\taskmng.pdb"
+		 $pdb23 = "\\Datahelp\\UPLO\\HTTP\\HTTP_T\\17_05_2011\\Release\\Http_t.pdb"
+		 $pdb24 = "\\Datahelp\\UPLO\\HTTP\\HTTP_T\\20_05_2011\\Release\\Http_t.pdb"
+		 $pdb25 = "\\June mac paylods\\final Klogger-1 june-Fud from eset5.0\\Klogger- 30 may\\Klogger- 30 may\\Release\\Klogger.pdb"
+		 $pdb26 = "\\June mac paylods\\Keylo ger backup\\final Klogger-1 june-Fud from eset5.0\\Klogger- 30 may\\Klogger- 30 may\\Release\\kquant.pdb"
+		 $pdb27 = "\\June mac paylods\\Keylogger backup\\final Klogger-1 june-Fud from eset5.0\\Klogger- 30 may\\Klogger- 30 may\\Release\\kquant.pdb"
+		 $pdb28 = "\\My\\lan scanner\\Task\\HangOver 1.2.2\\Release\\Http_t.pdb"
+		 $pdb29 = "\\New folder\\paylod backup\\OTHER\\Uploder\\HangOver 1.5.7 (Startup)\\HangOver 1.5.7 (Startup)\\Release\\Http_t.pdb"
+		 $pdb30 = "\\keyloger\\KeyLog\\keytest1\\keytest\\taskmng.pdb"
+		 $pdb31 = "\\august\\13 aug\\HangOver 1.5.7 (Startup) uploader\\Release\\Http_t.pdb"
+		 $pdb32 = "\\backup E\\SourceCodeBackup\\september\\aradhana\\HangOver 1.5.3 (Startup)\\Release\\Http_t.pdb"
+		 $pdb33 = "\\payloads\\new backup feb\\SUNDAY\\kmail(http) 01.20\\kmail(http) 01.20\\Release\\kmail.pdb"
+		 $pdb34 = "\\payloads\\ita nagar\\Uploader\\HangOver 1.5.7 (Startup)\\HangOver 1.5.7 (Startup)\\Release\\Http_t.pdb"
+		 $pdb35 = "\\final project backup\\task information\\task of september\\Tourist 2.4.3 (Down Link On Resource) -L\\Release\\Ron.pdb"
+		 $pdb36 = "\\final project backup\\complete task of ad downloader & usb grabber&uploader\\New folder\\with icon +shortcut link\\HangOver 1.5.3 (Startup)\\Release\\Http_t.pdb"
+		 $pdb37 = "\\final project backup\\uploader version backup\\fud all av hangover1.5.4\\with icon +shortcut link\\HangOver 1.5.3 (Startup)\\Release\\Http_t.pdb"
+		 $pdb38 = "\\final project backup\\uploader version backup\\HangOver 1.5.3 (Startup)\\Release\\Http_t.pdb"
+		 $pdb39 = "\\New folder\\with icon +shortcut link\\HangOver 1.5.3 (Startup)\\Release\\Http_t.pdb"
+		 $pdb40 = "\\Http uploader limited account\\Http uploader limited account\\RON 2.0.0\\Release\\Ron.pdb"
+		 $pdb41 = "\\Uploader\\HTTP\\HTTP Babylon 5.1.1\\HTTP Babylon 5.1.1\\Httpbackup\\Release\\HttpUploader.pdb"
+		 $pdb42 = "\\Uploader\\HTTP\\ron uplo\\RON 2.0.0\\Release\\Ron.pdb"
+
+ 	condition:
+
+ 		any of them
+}
+
+rule apt_hanover_slidewin_pdb
+{
+	 meta:
+
+		 description = "Rule to detect hanover slidewin samples"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "32DD4DEBED737BF2692796E6DCA7D115"
+		 hash = "97BDE23AE78DDABC36A0A46A4E5B1FAE"
+		 hash = "CB22FB4E06F7D02F8CAC1350D34CA0A6"
+		 hash = "34B013D36146BA868E4DFA51529C47A4"
+
+	 strings:
+
+		 $pdb = "\\Users\\God\\Desktop\\ThreadScheduler-aapnews-Catroot2\\Release\\ThreadScheduler.pdb"
+		 $pdb1 = "\\Data\\User\\MFC-Projects\\KeyLoggerWin32-hostzi\\Release\\slidebar.pdb"
+		 $pdb2 = "\\Data\\User\\MFC-Projects\\KeyLoggerWin32-spectram\\Release\\slidebar.pdb"
+		 $pdb3 = "\\Data\\User\\MFC-Projects\\KeyLoggerWin32-zendossier\\Release\\slidebar.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule apt_hikit_rootkit
+{
+	 meta:
+		 description = "Rule to detect the rootkit hikit based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+
+	 strings:
+
+		 $pdb = "\\JmVodServer\\hikit\\bin32\\RServer.pdb"
+		 $pdb1 = "\\JmVodServer\\hikit\\bin32\\w7fw.pdb"
+		 $pdb2 = "\\JmVodServer\\hikit\\bin32\\w7fw_2k.pdb"
+		 $pdb3 = "\\JmVodServer\\hikit\\bin64\\w7fw_x64.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule karkoff_dnspionaje {
+
+   meta:
+
+      description = "Rule to detect the Karkoff malware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://blog.talosintelligence.com/2019/04/dnspionage-brings-out-karkoff.html"
+
+   strings:
+
+      $s1 = "DropperBackdoor.Newtonsoft.Json.dll" fullword wide
+      $s2 = "C:\\Windows\\Temp\\MSEx_log.txt" fullword wide
+      $s3 = "DropperBackdoor.exe" fullword wide
+      $s4 = "get_ProcessExtensionDataNames" fullword ascii
+      $s5 = "get_ProcessDictionaryKeys" fullword ascii
+      $s6 = "https://www.newtonsoft.com/json 0" fullword ascii
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 1000KB and all of them
+}
+
+
+rule APT_KimSuky_bckdr_dll {
+
+   meta:
+
+      description = "Armadillo packed DLL used in Kimsuky campaign"
+      author = "Christiaan Beek - McAfee Advanced Threat Research"
+      reference = "https://securelist.com/the-kimsuky-operation-a-north-korean-apt/57915/"
+      date = "2018-02-09"
+      hash1 = "afe4237ff1a3415072d2e1c2c8954b013471491c6afdce3f04d2f77e91b0b688"
+      hash2 = "38897be10924bc694632e774ef80d22a94fed100b0ba29f9bd6f254db5f5be0f"
+      hash3 = "8433f648789bcc97684b5ec112ee9948f4667087c615ff19a45216b8a3c27539"
+      hash4 = "1cdbe9eda77a123cf25baf2dc15218e0afd9b65dae80ea9e00c465b676187a1d"
+      hash5 = "53e3cdbfbfb4fe673e10c8bdadc5d8790e21d01f0b40ffde0a08837ab9a3df91"
+      hash6 = "d643d0375168dcb1640d9fefc0c4035d7772c0a3e41b0498780eee9e1935dfff"
+      hash7 = "7cde78633a2cb14b088a3fe59cfad7dd29493dc41c92e3215a27516770273b84"
+
+   strings:
+
+      $x1 = "taskmgr.exe Execute Ok!!!" fullword ascii
+      $x2 = "taskmgr.exe Execute Err!!!" fullword ascii
+      $x3 = "kkk.exe Executing!!!" fullword ascii
+      $s4 = "ShellExecuteA Ok!!!" fullword ascii
+      $s5 = "ShellExecuteA Err!!!" fullword ascii
+      $s6 = "Manage.dll" fullword ascii
+      $s7 = "%s_%s.txt" fullword ascii
+      $s8 = "kkk.exe Copy Ok!" fullword ascii
+      $s9 = "File Executing!" fullword ascii
+      $s10 = "////// KeyLog End //////" fullword ascii
+      $s11 = "//////// SystemInfo End ///////" fullword ascii
+      $s12 = "//////// SystemInfo ///////" fullword ascii
+      $s13 = "///// UserId //////" fullword ascii
+      $s14 = "///// UserId End //////" fullword ascii
+      $s15 = "////// KeyLog //////" fullword ascii
+      $s16 = "Decrypt Erro!!!" fullword ascii
+      $s17 = "File Delete Ok!" fullword ascii
+      $s18 = "Down Ok!!!" fullword ascii
+
+      $op0 = { be 40 e9 00 10 8d bd 3c ff ff ff 83 c4 48 f3 a5 }
+      $op1 = { 8b ce 33 c0 8b d1 8d bc 24 34 02 00 00 c1 e9 02 }
+      $op2 = { be dc e9 00 10 8d bd 1c ff ff ff f3 a5 8d bd 1c }
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 200KB and ( 1 of ($x*) and 4 of them ) and all of ($op*)) or ( all of them )
+}
+
+rule lagulon_trojan_pdb
+{
+	 meta:
+	 description = "Rule to detect trojan Lagulon based on PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "e8b1f23616f9d8493e8a1bf0ca0f512a"
+
+ strings:
+
+ 	$pdb = "\\proj\\wndTest\\Release\\wndTest.pdb"
+
+ condition:
+
+ 	any of them
+}
+rule manitsme_trojan
+{
+	 meta:
+		 description = "Rule to detect Manitsme based on PDB"
+		 author = "Marc Rivero Lopez"
+		 hash = "E97EBB5B2050B86999C55797C2348BA7"
+
+	 strings:
+
+	 	$pdb = "\\rouji\\SvcMain.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule MiniASP_PDB
+{
+	 meta:
+		 description = "Rule to detect MiniASP based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "026C1532DB8125FBAE0E6AA1F4033F42"
+		 hash = "77FBFED235D6062212A3E43211A5706E"
+
+	 strings:
+		 $pdb = "\\Project\\mm\\Wininet\\Attack\\MiniAsp4\\Release\\MiniAsp.pdb"
+		 $pdb1 = "\\XiaoME\\AiH\\20120410\\Attack\\MiniAsp3\\Release\\MiniAsp.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Mirage_PDB
+{
+		 meta:
+		 description = "Rule to detect Mirage samples based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "5FA26F410D0133F4152EA78DF3978C22"
+		 hash = "1045E26819FF782015202838E2C609F7"
+
+	 strings:
+
+		 $pdb = "\\MF-v1.2\\Server\\Debug\\Server.pdb"
+		 $pdb1 = "\\fox_1.2 20110307\\MF-v1.2\\Server\\Release\\MirageFox_Server.pdb"
+
+	condition:
+
+		any of them
+}
+rule apt_aurora_pdb_samples
+{
+	 meta:
+	 description = "Aurora APT Malware 2006-2010"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "467EEF090DEB3517F05A48310FCFD4EE"
+	 hash = "4A47404FC21FFF4A1BC492F9CD23139C"
+
+ strings:
+
+	 $pdb = "\\AuroraVNC\\VedioDriver\\Release\\VedioDriver.pdb"
+	 $pdb1 = "\\Aurora_Src\\AuroraVNC\\Avc\\Release\\AVC.pdb"
+
+ condition:
+
+ 	any of them
+}
+
+rule shadowspawn_utility {
+
+   meta:
+
+      description = "Rule to detect ShadowSpawn utility used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $x1 = "C:\\data\\projects\\shadowspawn\\src\\bin\\Release-W2K3\\x64\\ShadowSpawn.pdb" fullword ascii
+      $op0 = { e9 34 ea ff ff cc cc cc cc 48 8d 8a 20 }
+      $op1 = { 48 8b 85 e0 06 00 00 48 8d 34 00 48 8d 46 02 48 }
+      $op2 = { e9 34 c1 ff ff cc cc cc cc 48 8b 8a 68 }
+
+   condition:
+
+      uint16(0) == 0x5a4d and filesize < 200KB and
+      ( pe.imphash() == "eaae87b11d2ebdd286af419682037b4c" and all of them)
+}
+
+rule poison_ivy_softcell {
+
+   meta:
+
+      description = "Rule to detect Poison Ivy used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $x1 = "Cannot create folder %sDCRC failed in the encrypted file %s. Corrupt file or wrong password." fullword wide
+      $s6 = "Extracting files to %s folder$Extracting files to temporary folder" fullword wide
+      $s7 = "&Enter password for the encrypted file:" fullword wide
+      $s8 = "start \"\" \"%CD%\\mcoemcpy.exe\"" fullword ascii
+      $s9 = "setup.bat" fullword ascii
+      $s10 = "ErroraErrors encountered while performing the operation" fullword wide
+      $s11 = "Please download a fresh copy and retry the installation" fullword wide
+      $s12 = "antivir.dat" fullword ascii
+      $s13 = "The required volume is absent2The archive is either in unknown format or damaged" fullword wide
+      $s14 = "=Total path and file name length must not exceed %d characters" fullword wide
+      $s15 = "Please close all applications, reboot Windows and restart this installation\\Some installation files are corrupt." fullword wide
+      $op0 = { e8 6f 12 00 00 84 c0 74 04 32 c0 eb 34 56 ff 75 }
+      $op1 = { 53 68 b0 34 41 00 57 e8 61 44 00 00 57 e8 31 44 }
+      $op2 = { 56 ff 75 08 8d b5 f4 ef ff ff e8 17 ff ff ff 8d }
+
+   condition:
+
+      uint16(0) == 0x5a4d and filesize < 500KB and
+      ( pe.imphash() == "dbb1eb5c3476069287a73206929932fd" and all of them)
+}
+
+rule trochilus_softcell {
+   meta:
+      description = "Rule to detect Trochilus malware used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "Shell.dll" fullword ascii
+      $s2 = "photo.dat" fullword wide
+      $s3 = "VW9HxtV9H|tQ9" fullword ascii
+      $s4 = "G6uEGRich7uEG" fullword ascii
+      $op0 = { e8 9d ad ff ff ff b6 a8 }
+      $op1 = { e8 d4 ad ff ff ff b6 94 }
+      $op2 = { e8 ea ad ff ff ff b6 8c }
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 200KB and
+      ( pe.imphash() == "8e13ebc144667958722686cb04ee16f8" and ( pe.exports("Entry") and pe.exports("Main") ) and  all of them )
+}
+
+rule lg_utility_lateral_movement_softcell {
+   meta:
+      description = "Rule to detect the utility LG from Joeware to do Lateral Movement in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "lg \\\\comp1\\users louise -add -r comp3" fullword ascii
+      $s2 = "lg \\\\comp1\\users S-1-5-567-678-89765-456 -sid -add" fullword ascii
+      $s3 = "lg \\\\comp1\\users -sidsout" fullword ascii
+      $s4 = "Enumerates members of localgroup users on localhost" fullword ascii
+      $s5 = "Adds SID resolved at comp3 for louise to localgroup users on comp1" fullword ascii
+      $s6 = "CodeGear C++ - Copyright 2008 Embarcadero Technologies" fullword ascii
+      $s7 = "Lists members of localgroup users on comp1 in SID format" fullword ascii
+      $s8 = "ERROR: Verify that CSV lines are available in PIPE input. " fullword ascii
+      $op0 = { 89 43 24 c6 85 6f ff ff ff 00 83 7b 24 10 72 05 }
+      $op1 = { 68 f8 0e 43 00 e8 8d ff ff ff 83 c4 20 68 f8 0e }
+      $op2 = { 66 c7 85 74 ff ff ff 0c 00 8d 55 d8 52 e8 e9 eb }
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 600KB and
+      ( pe.imphash() == "327ce3f883a5b59e966b5d0e3a321156" and all of them )
+}
+
+rule mangzamel_softcell {
+
+   meta:
+
+      description = "Rule to detect Mangzamel used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "Change Service Mode to user logon failure.code:%d" fullword ascii
+      $s2 = "spoolsvs.exe" fullword wide
+      $s3 = "System\\CurrentControlSet\\Services\\%s\\parameters\\%s" fullword ascii
+      $s19 = "Please Correct [-s %s]" fullword ascii
+      $s20 = "Please Correct [-m %s]" fullword ascii
+      $op0 = { 59 8d 85 64 ff ff ff 50 c7 85 64 ff ff ff 94 }
+      $op1 = { c9 c2 08 00 81 c1 30 34 00 00 e9 cf 9b ff ff 55 }
+      $op2 = { 80 0f b6 b5 68 ff ff ff c1 e2 04 0b d6 0f b6 b5 }
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 300KB and
+      ( pe.imphash() == "ef64bb4aa42ef5a8a2e3858a636bce40" and all of them )
+}
+rule nbtscan_utility_softcell {
+   meta:
+      description = "Rule to detect nbtscan utility used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s2 = "nbtscan 1.0.35 - 2008-04-08 - http://www.unixwiz.net/tools/" fullword ascii
+      $s10 = "parse_target_cb.c" fullword ascii
+      $s11 = "ranges. Ranges can be in /nbits notation (\"192.168.12.0/24\")" fullword ascii
+      $s12 = "or with a range in the last octet (\"192.168.12.64-97\")" fullword ascii
+      $op0 = { 52 68 d4 66 40 00 8b 85 58 ff ff ff 50 ff 15 a0 }
+      $op1 = { e9 1c ff ff ff 8b 45 fc 8b e5 5d c3 cc cc cc cc }
+      $op2 = { 59 59 c3 8b 65 e8 ff 75 d0 ff 15 34 60 40 00 ff }
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 100KB and
+      ( pe.imphash() == "2fa43c5392ec7923ababced078c2f98d" and all of them )
+}
+
+rule mimikatz_utility_softcell {
+   meta:
+      description = "Rule to detect Mimikatz utility used in the SoftCell operation"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+      $x1 = "livessp.dll" fullword wide
+      $x2 = "\\system32\\tapi32.dll" fullword wide
+      $s3 = " * Process Token : " fullword wide
+      $s4 = "lsadump" fullword wide
+      $s5 = "-nl - skip lsa dump..." fullword wide
+      $s6 = "lsadump::sam" fullword wide
+      $s7 = "lsadump::lsa" fullword wide
+      $s8 = "* NL$IterCount %u, %u real iter(s)" fullword wide
+      $s9 = "* Iter to def (%d)" fullword wide
+      $s10 = " * Thread Token  : " fullword wide
+      $s11 = " * RootKey  : " fullword wide
+      $s12 = "lsadump::cache" fullword wide
+      $s13 = "sekurlsa::logonpasswords" fullword wide
+      $s14 = "(commandline) # %s" fullword wide
+      $s15 = ">>> %s of '%s' module failed : %08x" fullword wide
+      $s16 = "UndefinedLogonType" fullword wide
+      $s17 = " * Username : %wZ" fullword wide
+      $s18 = "logonPasswords" fullword wide
+      $s19 = "privilege::debug" fullword wide
+      $s20 = "token::elevate" fullword wide
+      $op0 = { e8 0b f5 00 00 90 39 35 30 c7 02 00 75 34 48 8b }
+      $op1 = { eb 34 48 8b 4d cf 48 8d 45 c7 45 33 c9 48 89 44 }
+      $op2 = { 48 3b 0d 34 26 01 00 74 05 e8 a9 31 ff ff 48 8b }
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 500KB and
+      ( pe.imphash() == "169e02f00c6fb64587297444b6c41ff4" and all of them )
+}
+
+rule sfx_winrar_plugx {
+
+   meta:
+
+      description = "Rule to detect the SFX WinRAR delivering a possible Plugx sample"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $x1 = "Cannot create folder %sDCRC failed in the encrypted file %s. Corrupt file or wrong password." fullword wide
+      $s2 = "Wrong password for %s5Write error in the file %s. Probably the disk is full" fullword wide
+      $s3 = "mcutil.dll" fullword ascii
+      $s4 = "Unexpected end of archiveThe file \"%s\" header is corrupt%The archive comment header is corrupt" fullword wide
+      $s5 = "mcoemcpy.exe" fullword ascii
+      $s6 = "Extracting files to %s folder$Extracting files to temporary folder" fullword wide
+      $s7 = "&Enter password for the encrypted file:" fullword wide
+      $s8 = "start \"\" \"%CD%\\mcoemcpy.exe\"" fullword ascii
+      $s9 = "setup.bat" fullword ascii
+      $s10 = "ErroraErrors encountered while performing the operation" fullword wide
+      $s11 = "Please download a fresh copy and retry the installation" fullword wide
+      $s12 = "antivir.dat" fullword ascii
+      $s13 = "The required volume is absent2The archive is either in unknown format or damaged" fullword wide
+      $s14 = "=Total path and file name length must not exceed %d characters" fullword wide
+      $s15 = "Please close all applications, reboot Windows and restart this installation\\Some installation files are corrupt." fullword wide
+      $s16 = "folder is not accessiblelSome files could not be created." fullword wide
+      $s17 = "Packed data CRC failed in %s" fullword wide
+      $s18 = "DDTTDTTDTTDTTDTTDTTDTTDTTDTQ" fullword ascii
+      $s19 = "File close error" fullword wide
+      $s20 = "CRC failed in %s" fullword wide
+      $op0 = { e8 6f 12 00 00 84 c0 74 04 32 c0 eb 34 56 ff 75 }
+      $op1 = { 53 68 b0 34 41 00 57 e8 61 44 00 00 57 e8 31 44 }
+      $op2 = { 56 ff 75 08 8d b5 f4 ef ff ff e8 17 ff ff ff 8d }
+
+   condition:
+
+      uint16(0) == 0x5a4d and filesize < 500KB and
+      ( pe.imphash() == "dbb1eb5c3476069287a73206929932fd" and all of them)
+}
+
+rule troy_malware_campaign_pdb
+{
+	 meta:
+
+		 description = "Rule to detect the Operation Troy based on the PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "3456f42bba032cff5518a5e5256cc433"
+		 hash = "ebc7741e6e0115c2cf992860a7c7eae7"
+
+	 strings:
+
+		 $pdb = "\\Work\\Make Troy\\Concealment Troy\\Exe_Concealment_Troy(Winlogon_Shell)\\SetKey_WinlogOn_Shell_Modify\\BD_Installer\\Release\\BD_Installer.pdb"
+		 $pdb1 = "\\Work\\Make Troy\\Concealment Troy\\Exe_Concealment_Troy(Winlogon_Shell)\\Dll\\Concealment_Troy(Dll)\\Release\\Concealment_Troy.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule shadowHammer
+{
+
+      meta:
+      description = "Rule to detect ShadowHammer using the fake domain of asus and binary (overlay and not overlay, disk and memory)"
+      author = "Alex Mundo | McAfee ATR Team"
+
+   strings:
+
+       $d = { 68 6F 74 66 }
+       $d1 = { 61 73 75 73 }
+       $d2 = { 69 78 2E 63 }
+       $binary = { 44 3A 5C 43 2B 2B 5C 41 73 75 73 53 68 65 6C 6C 43 6F 64 65 5C 52 65 6C 65 61 73 65 5C 41 73 75 73 53 68 65 6C 6C 43 6F 64 65 2E 70 64 62 }
+
+   condition:
+       all of ($d*) or $binary
+}
+rule APT_Turla_PDB
+{
+	 meta:
+
+		 description = "Rule to detect a component of the APT Turla"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "cb1b68d9971c2353c2d6a8119c49b51f"
+
+	 strings:
+
+	 	$pdb = "\\Workshop\\Projects\\cobra\\carbon_system\\x64\\Release\\carbon_system.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule enfal_pdb
+{
+	 meta:
+
+		 description = "Rule to detect Enfal malware"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "D1B8DC41EFE4208191C766B303793D15"
+		 hash = "A36CD4870446B513E70F903A77754B4F"
+		 hash = "E7F93C894451EF1FDEFA81C6B229852C"
+		 hash = "A3A6B5867A48DB969ABA90DD39771370"
+		 hash = "01A0C09E9B3013C00009DA8D4E9E2B2B"
+		 hash = "7A1D4CBA9CE2A28EF586C27689B5AEA7"
+
+	 strings:
+
+		 $pdb = "\\Documents and Settings\\Administrator\\My Documents\\Work\\EtenFalcon\\Release\\DllServiceTrojan.pdb"
+		 $pdb1 = "\\Documents and Settings\\Administrator\\My Documents\\Work\\EtenFalcon\\Release\\ServiceDll.pdb"
+		 $pdb2 = "\\Release\\ServiceDll.pdb"
+		 $pdb3 = "\\muma\\0511\\Release\\ServiceDll.pdb"
+		 $pdb4 = "\\programs\\LuridDownLoader\\LuridDownloader for Falcon\\ServiceDll\\Release\\ServiceDll.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Flamer_PDB
+{
+	 meta:
+	 description = "Rule to detect Flamer based on the PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "581F2EF2E3BA164281B562E435882EB5"
+
+	 strings:
+
+	 	$pdb = "\\Projects\\Jimmy\\jimmydll_v2.0\\JimmyForClan\\Jimmy\\bin\\srelease\\jimmydll\\indsvc32.pdb"
+
+	 condition:
+
+		 any of them
+}
+rule Gauss_PDB
+{
+	 meta:
+		 description = "Rule to detect Gauss based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "EF6451FDE3751F698B49C8D4975A58B5"
+
+	 strings:
+
+		 $pdb = "\\projects\\gauss\\bin\\release\\winshell.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule ixeshe_bled_malware_pdb
+{
+	 meta:
+		 description = "Rule to detect Ixeshe_bled malware based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "E658B571FD1679DABFC2232991F712B0"
+
+	 strings:
+
+	 	$pdb = "\\code\\Blade2009.6.30\\Blade2009.6.30\\EdgeEXE_20003OC\\Debug\\EdgeEXE.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Dridex_P2P_pdb
+{
+	 meta:
+
+		 description = "Rule to detect Dridex P2P based on the PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "114DB69A015077A71908BFFF4E126863"
+
+	 strings:
+
+	 	$pdb = "\\c0da\\j.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Alina_POS_PDB
+{
+	 meta:
+		 description = "Rule to detect Alina POS"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "4C754150639AA3A86CA4D6B6342820BE"
+
+	 strings:
+
+	 	$pdb = "\\Users\\dice\\Desktop\\SRC_adobe\\src\\grab\\Release\\Alina.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule havex_backdoor_pdb
+{
+	 meta:
+		 description = "Rule to detect backdoor Havex based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "7B28D8A54FC15A96B8DA49DD3FCC1DAE"
+		 hash = "D610B84DEF0F32E139CD4E852F34882F"
+
+ 	strings:
+
+		 $pdb = "\\Workspace\\PhalangX 3D\\Src\\Build\\Release\\Phalanx-3d.ServerAgent.pdb"
+		 $pdb1 = "\\Workspace\\PhalangX 3D\\Src\\Build\\Release\\Tmprovider.pdb"
+
+	condition:
+
+ 		any of them
+}
+rule backdoor_kankan_pdb
+{
+	 meta:
+		 description = "Rule to detect kankan PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "a95f467b05f590b73647dbe705d14fd8"
+		 hash = "bf07aa43bc810629c2ea68fd84c1117"
+		 hash = "01e3c4b437945b2d58bdc2e0bb81f0d5"
+
+ 	strings:
+
+		 $pdb = "\\Projects\\OfficeAddin\\INPEnhSvc\\Release\\INPEnhSvc.pdb"
+		 $pdb1 = "\\Projects\\OfficeAddin\\OfficeAddin\\Release\\INPEn.pdb"
+		 $pdb2 = "\\Projects\\OfficeAddinXJ\\VOCEnhUD\\Release\\VOCEnhUD.pdb"
+
+	condition:
+
+ 		any of them
+}
+rule kartoxa_malware_pdb
+{
+	 meta:
+		 description = "Rule to detect Kartoxa POS based on the PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "255daa6722de6ad03545070dfbef3330"
+
+	 strings:
+
+		$pdb = "\\vm\\devel\\dark\\mmon\\Release\\mmon.pdb"
+
+	condition:
+		any of them
+}
+rule blackPOS_pdb
+{
+	 meta:
+		 description = "BlackPOS PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "F45F8DF2F476910EE8502851F84D1A6E"
+
+	 strings:
+
+	 	$pdb = "\\Projects\\Rescator\\MmonNew\\Debug\\mmon.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Browser_Fox_Adware
+{
+	 meta:
+		 description = "Browser_Fox_Adware"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "ca7bcde15e93c132954bc335a2715502"
+
+	 strings:
+
+	 	$pdb = "\\Utilities\\130ijkfv.o4g\\Desktop\\Desktop.OptChecker\\bin\\Release\\ BooZaka.Opt"
+
+	 condition:
+
+	 	any of them
+}
+rule chikdos_malware_pdb
+{
+	 meta:
+
+		 description = "Chikdos PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "10E7876FD639EA81767315CD178873C0"
+
+	 strings:
+
+	 	$pdb = "\\IntergrateCHK\\Release\\IntergrateCHK.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule cutwail_pdb
+{
+	 meta:
+	 description = "Rule to detect cutwail based on the PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "C1B5AFCAD390B4A4F8530ABEB97F9546"
+
+	 strings:
+
+	 	$pdb = "\\0bulknet\\FLASH\\Release\\flashldr.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule downloader_darkmegi_pdb
+{
+	 meta:
+	 description = "Rule to detect DarkMegi downloader based on PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "E7AB13A24081BFFA21272F69FFD32DBF"
+
+ 	strings:
+
+ 		$pdb = "\\RKTDOW~1\\RKTDRI~1\\RKTDRI~1\\objchk\\i386\\RktDriver.pdb"
+
+ 	condition:
+
+ 		any of them
+}
+rule dropper_demekaf_pdb_
+{
+	 meta:
+	 description = "Rule to detect Demekaf dropper based on PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "8F9BC5A1621CCD39BDE9F8AC8F507D9E"
+
+ 	 strings:
+
+ 		$pdb = "\\vc\\res\\fake1.19-jpg\\fake\\Release\\fake.pdb"
+
+ 	 condition:
+
+ 		any of them
+}
+rule festi_botnet_pdb
+{
+	 meta:
+	 description = "Rule to detect the Festi botnet based on PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "8c0a5c07bb13a7d82c0f420299c07476"
+
+	 strings:
+
+	 	$pdb = "\\eclipse\\botnet\\drivers\\Bin\\i386\\kernel.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule inabot_worm
+{
+	 meta:
+		 description = "Rule to detect inabot worm based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "B93529F9949F79292FB12015A374E181"
+		 hash = "29671A04CB2F72BC689F232EED95180C"
+		 hash = "774A146E245A6953BC9D47219E9D64C6"
+		 hash = "4CE026C2037DDF19E26E06E0C84041E9"
+
+	 strings:
+
+		 $pdb = "\\trasser\\portland.pdb"
+		 $pdb1 = "\\mainstream\\archive.pdb"
+
+ condition:
+
+ 	any of them
+}
+rule kelihos_botnet_pdb
+{
+	 meta:
+		 description = "Rule to detect Kelihos malware based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "61841B1DC54EA0BAF95ACC02767EE1B1"
+		 hash = "883C3CEE9B5C443562A48F10E1541810"
+
+	 strings:
+
+		 $pdb = "\\Only\\Must\\Not\\And.pdb"
+		 $pdb1 = "\\To\\Access\\Do.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule likseput_backdoor_pdb
+{
+	 meta:
+		 description = "Rule to detect Likseput backdoor based on the PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "3A1E294DA327503ABAF63D310E0F03B9"
+
+	 strings:
+
+	 	$pdb = "\\work\\code\\2008-7-8muma\\mywork\\winInet_winApplication2009-8-7\\mywork\\aaaaaaa\\Release\\aaaaaaa.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule Mangzamel_trojan
+{
+	 meta:
+		 description = "Rule to detect Mangzamel  trojan based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "F9BF6377DF8FCE8FB0E7636D58FA4FF0"
+		 hash = "0ABEEE16C33073C7E2716F476F3BB3C5"
+
+	 strings:
+
+		 $pdb = "\\svn\\sys\\binary\\i386\\agony.pdb"
+		 $pdb1 = "\\Windows\\i386\\ndisdrv.pdb"
+
+	condition:
+		any of them
+}
+rule Medfos
+{
+	 meta:
+		 description = "Rule to detect Medfos trojan based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "0512E73000BCCCE5AFD2E9329972208A"
+
+	 strings:
+
+		 $pdb = "\\som\\bytguqne\\jzexsaf\\gyin.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule msworldexploit_builder_doc {
+
+   meta:
+
+      description = "Rule to detect RTF/Docs files created by MsWordExploit Builder"
+      author = "Marc Rivero | McAfee ATR Team"
+
+  strings:
+
+      $s1 = "68 74 74 70 3a 2f 2f 61 70 69 2e 6d 73 77 6f 72 64 65 78 70 6c 6f 69 74 2e 63 6f 6d"  ascii
+      $s2 = "{\\*\\generator mswordexploit 6.3.9600}" fullword ascii
+
+   condition:
+
+      any of them
+}
+rule NionSpy
+{
+
+meta:
+
+	description = "Triggers on old and new variants of W32/NionSpy file infector"
+	reference = "https://blogs.mcafee.com/mcafee-labs/taking-a-close-look-at-data-stealing-nionspy-file-infector"
+
+strings:
+
+	$variant2015_infmarker = "aCfG92KXpcSo4Y94BnUrFmnNk27EhW6CqP5EnT"
+	$variant2013_infmarker = "ad6af8bd5835d19cc7fdc4c62fdf02a1"
+	$variant2013_string = "%s?cstorage=shell&comp=%s"
+
+condition:
+
+	uint16(0) == 0x5A4D and uint32(uint32(0x3C)) == 0x00004550 and 1 of ($variant*)
+}
+rule rietspoof_loader {
+   meta:
+      description = "Rule to detect the Rietspoof loader"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+      $x1 = "\\Work\\d2Od7s43\\techloader\\loader" fullword ascii
+
+   condition:
+      uint16(0) == 0x5a4d and all of them
+}
+rule rovnix_downloader
+{
+	meta:
+
+		author="Intel Security"
+		description="Rovnix downloader with sinkhole checks"
+		reference = "https://blogs.mcafee.com/mcafee-labs/rovnix-downloader-sinkhole-time-checks/"
+
+	strings:
+
+			$sink1= "control"
+			$sink2 = "sink"
+			$sink3 = "hole"
+			$sink4= "dynadot"
+			$sink5= "block"
+			$sink6= "malw"
+			$sink7= "anti"
+			$sink8= "googl"
+			$sink9= "hack"
+			$sink10= "trojan"
+			$sink11= "abuse"
+			$sink12= "virus"
+			$sink13= "black"
+			$sink14= "spam"
+			$boot= "BOOTKIT_DLL.dll"
+			$mz = { 4D 5A }
+
+	condition:
+
+		$mz in (0..2) and all of ($sink*) and $boot
+}
+rule screenlocker_5h311_1nj3c706 {
+
+   meta:
+
+      description = "Rule to detect the screenlocker 5h311_1nj3c706"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://twitter.com/demonslay335/status/1038060120461266944"
+
+   strings:
+
+      $s1 = "C:\\Users\\Hoang Nam\\source\\repos\\WindowsApp22\\WindowsApp22\\obj\\Debug\\WindowsApp22.pdb" fullword ascii
+      $s2 = "cmd.exe /cREG add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\ActiveDesktop /v NoChangingWallPaper /t REG_DWOR" wide
+      $s3 = "C:\\Users\\file1.txt" fullword wide
+      $s4 = "C:\\Users\\file2.txt" fullword wide
+      $s5 = "C:\\Users\\file.txt" fullword wide
+      $s6 = " /v Wallpaper /t REG_SZ /d %temp%\\IMG.jpg /f" fullword wide
+      $s7 = " /v DisableAntiSpyware /t REG_DWORD /d 1 /f" fullword wide
+      $s8 = "All your file has been locked. You must pay money to have a key." fullword wide
+      $s9 = "After we receive Bitcoin from you. We will send key to your email." fullword wide
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 200KB ) and all of them
+}
+rule Shifu {
+
+	meta:
+
+		reference = "https://blogs.mcafee.com/mcafee-labs/japanese-banking-trojan-shifu-combines-malware-tools/"
+		author = "McAfee Labs"
+
+	strings:
+
+		$b = "RegCreateKeyA"
+		$a = "CryptCreateHash"
+		$c = {2F 00 63 00 20 00 73 00 74 00 61 00 72 00 74 00 20 00 22 00 22 00 20 00 22 00 25 00 73 00 22 00 20 00 25 00 73 00 00 00 00 00 63 00 6D 00 64 00 2E 00 65 00 78 00 65 00 00 00 72 00 75 00 6E}
+		$d = {53 00 6E 00 64 00 56 00 6F 00 6C 00 2E 00 65 00 78 00 65}
+		$e = {52 00 65 00 64 00 69 00 72 00 65 00 63 00 74 00 45 00 58 00 45}
+
+	condition:
+
+		all of them
+}
+rule VPNFilter {
+
+   meta:
+
+      description = "Filter for 2nd stage malware used in VPNfilter attack"
+      author = "Christiaan Beek @ McAfee Advanced Threat Research"
+      reference = "https://blog.talosintelligence.com/2018/05/VPNFilter.html"
+      date = "2018-05-23"
+      hash1 = "9eb6c779dbad1b717caa462d8e040852759436ed79cc2172692339bc62432387"
+      hash2 = "4b03288e9e44d214426a02327223b5e516b1ea29ce72fa25a2fcef9aa65c4b0b"
+      hash3 = "9683b04123d7e9fe4c8c26c69b09c2233f7e1440f828837422ce330040782d17"
+      hash4 = "0649fda8888d701eb2f91e6e0a05a2e2be714f564497c44a3813082ef8ff250b"
+      hash5 = "8a20dc9538d639623878a3d3d18d88da8b635ea52e5e2d0c2cce4a8c5a703db1"
+      hash6 = "776cb9a7a9f5afbaffdd4dbd052c6420030b2c7c3058c1455e0a79df0e6f7a1d"
+      hash7 = "37e29b0ea7a9b97597385a12f525e13c3a7d02ba4161a6946f2a7d978cc045b4"
+      hash8 = "d6097e942dd0fdc1fb28ec1814780e6ecc169ec6d24f9954e71954eedbc4c70e"
+
+   strings:
+
+      $s1 = "id-at-postalAddress" fullword ascii
+      $s2 = "/bin/shell" fullword ascii
+      $s3 = "/DZrtenNLQNiTrM9AM+vdqBpVoNq0qjU51Bx5rU2BXcFbXvI5MT9TNUhXwIDAQAB" fullword ascii
+      $s4 = "Usage does not match the keyUsage extension" fullword ascii
+      $s5 = "id-at-postalCode" fullword ascii
+      $s6 = "vTeY4KZMaUrveEel5tWZC94RSMKgxR6cyE1nBXyTQnDOGbfpNNgBKxyKbINWoOJU" fullword ascii
+      $s7 = "id-ce-extKeyUsage" fullword ascii
+      $s8 = "/f8wYwYDVR0jBFwwWoAUtFrkpbPe0lL2udWmlQ/rPrzH/f+hP6Q9MDsxCzAJBgNV" fullword ascii
+      $s9 = "/etc/config/hosts" fullword ascii
+      $s10 = "%s%-18s: %d bits" fullword ascii
+      $s11 = "id-ce-keyUsage" fullword ascii
+      $s12 = "Machine is not on the network" fullword ascii
+      $s13 = "No XENIX semaphores available" fullword ascii
+      $s14 = "No CSI structure available" fullword ascii
+      $s15 = "Name not unique on network" fullword ascii
+
+   condition:
+
+      ( uint16(0) == 0x457f and filesize < 500KB and ( 8 of them )) or ( all of them )
+}
+
+rule Monero_Mining_Detection {
+
+   meta:
+
+      description = "Monero mining software"
+      author = "Christiaan Beek"
+      reference = "MoneroMiner"
+      date = "2018-04-05"
+
+   strings:
+
+      $1 = "* COMMANDS:     'h' hashrate, 'p' pause, 'r' resume" fullword ascii
+      $2 = "--cpu-affinity       set process affinity to CPU core(s), mask 0x3 for cores 0 and 1" fullword ascii
+      $3 = "* THREADS:      %d, %s, av=%d, %sdonate=%d%%%s" fullword ascii
+      $4 = "--user-agent         set custom user-agent string for pool" fullword ascii
+      $5 = "-O, --userpass=U:P       username:password pair for mining server" fullword ascii
+      $6 = "--cpu-priority       set process priority (0 idle, 2 normal to 5 highest)" fullword ascii
+      $7 = "-p, --pass=PASSWORD      password for mining server" fullword ascii
+      $8 = "* VERSIONS:     XMRig/%s libuv/%s%s" fullword ascii
+      $9 = "-k, --keepalive          send keepalived for prevent timeout (need pool support)" fullword ascii
+      $10 = "--max-cpu-usage=N    maximum CPU usage for automatic threads mode (default 75)" fullword ascii
+      $11 = "--nicehash           enable nicehash/xmrig-proxy support" fullword ascii
+      $12 = "<!--The ID below indicates application support for Windows 10 -->" fullword ascii
+      $13 = "* CPU:          %s (%d) %sx64 %sAES-NI" fullword ascii
+      $14 = "-r, --retries=N          number of times to retry before switch to backup server (default: 5)" fullword ascii
+      $15 = "-B, --background         run the miner in the background" fullword ascii
+      $16 = "* API PORT:     %d" fullword ascii
+      $17 = "--api-access-token=T access token for API" fullword ascii
+      $18 = "-t, --threads=N          number of miner threads" fullword ascii
+      $19 = "--print-time=N       print hashrate report every N seconds" fullword ascii
+      $20 = "-u, --user=USERNAME      username for mining server" fullword ascii
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 4000KB and ( 8 of them )) or ( all of them )
+}
+
+rule screenlocker_acroware {
+
+   meta:
+
+      description = "Rule to detect the ScreenLocker Acroware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://www.bleepingcomputer.com/news/security/the-week-in-ransomware-august-31st-2018-devs-on-vacation/"
+
+   strings:
+
+      $s1 = "C:\\Users\\patri\\Documents\\Visual Studio 2015\\Projects\\Advanced Ransi\\Advanced Ransi\\obj\\Debug\\Advanced Ransi.pdb" fullword ascii
+      $s2 = "All your Personal Data got encrypted and the decryption key is stored on a hidden" fullword ascii
+      $s3 = "alphaoil@mail2tor.com any try of removing this Ransomware will result in an instantly " fullword ascii
+      $s4 = "HKEY_CURRENT_USER\\SoftwareE\\Microsoft\\Windows\\CurrentVersion\\Run" fullword wide
+      $s5 = "webserver, after 72 hours thedecryption key will get removed and your personal" fullword ascii
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 2000KB ) and all of them
+}
+rule amba_ransomware {
+
+   meta:
+
+      description = "Rule to detect Amba Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+      hash1 = "7c08cdf9f4e8be34ef6af5b53794163023c2b013f34c4134b8922f42933012a0"
+      hash2 = "73155a084aac8434bb0779a0b88e97d5cf2d0760e9d25f2f42346d3e06cdaac2"
+      hash3 = "ec237bc926ce9008a219b8b30882f3ac18531bd314ee852369fc712368c6acd5"
+      hash4 = "b9b6045a45dd22fcaf2fc13d39eba46180d489cb4eb152c87568c2404aecac2f"
+
+   strings:
+
+      $s1 = "64DCRYPT.SYS" fullword wide
+      $s2 = "32DCRYPT.SYS" fullword wide
+      $s3 = "64DCINST.EXE" fullword wide
+      $s4 = "32DCINST.EXE" fullword wide
+      $s5 = "32DCCON.EXE" fullword wide
+      $s6 = "64DCCON.EXE" fullword wide
+      $s8 = "32DCAPI.DLL" fullword wide
+      $s9 = "64DCAPI.DLL" fullword wide
+      $s10 = "ICYgc2h1dGRvd24gL2YgL3IgL3QgMA==" fullword ascii
+      $s11 = "QzpcVXNlcnNcQUJDRFxuZXRwYXNzLnR4dA==" fullword ascii
+      $s12 = ")!pssx}v!pssx}v))!pssx}v!pssx}v))!pssx}v!pssx}v))!pssx}v!pssx}v))!pssx}v!pssx}v))!pssx}v!pssx}v))!pssx}v!pssx}v)" fullword ascii
+      $s13 = "RGVmcmFnbWVudFNlcnZpY2U="
+      $s14 = "LWVuY3J5cHQgcHQ5IC1wIA=="
+      $s15 = "LWVuY3J5cHQgcHQ3IC1wIA=="
+      $s16 = "LWVuY3J5cHQgcHQ2IC1wIA=="
+      $s17 = "LWVuY3J5cHQgcHQzIC1wIA=="
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 3000KB and ( 8 of them )
+      ) or ( all of them )
+}
+rule anatova_ransomware {
+
+   meta:
+
+      description = "Rule to detect the Anatova Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://securingtomorrow.mcafee.com/other-blogs/mcafee-labs/happy-new-year-2019-anatova-is-here/"
+
+   strings:
+
+        $regex = /anatova[0-9]@tutanota.com/
+
+    condition:
+        uint16(0) == 0x5a4d and filesize < 2000KB and $regex
+}
+
+rule BadBunny {
+
+   meta:
+
+      description = "Bad Rabbit Ransomware"
+      author = "Christiaan Beek"
+      reference = "BadRabbit"
+      date = "2017-10-24"
+      hash1 = "8ebc97e05c8e1073bda2efb6f4d00ad7e789260afa2c276f0c72740b838a0a93"
+
+   strings:
+
+      $x1 = "schtasks /Create /SC ONCE /TN viserion_%u /RU SYSTEM /TR \"%ws\" /ST %02d:%02d:00" fullword wide
+      $x2 = "need to do is submit the payment and get the decryption password." fullword ascii
+      $s3 = "If you have already got the password, please enter it below." fullword ascii
+      $s4 = "dispci.exe" fullword wide
+      $s5 = "\\\\.\\GLOBALROOT\\ArcName\\multi(0)disk(0)rdisk(0)partition(1)" fullword wide
+      $s6 = "Run DECRYPT app at your desktop after system boot" fullword ascii
+      $s7 = "Enter password#1: " fullword wide
+      $s8 = "Enter password#2: " fullword wide
+      $s9 = "C:\\Windows\\cscc.dat" fullword wide
+      $s10 = "schtasks /Delete /F /TN %ws" fullword wide
+      $s11 = "Password#1: " fullword ascii
+      $s12 = "\\AppData" fullword wide
+      $s13 = "Disk decryption completed" fullword wide
+      $s14 = "Files decryption completed" fullword wide
+      $s15 = "http://diskcryptor.net/" fullword wide
+      $s16 = "Your personal installation key#1:" fullword ascii
+      $s17 = ".3ds.7z.accdb.ai.asm.asp.aspx.avhd.back.bak.bmp.brw.c.cab.cc.cer.cfg.conf.cpp.crt.cs.ctl.cxx.dbf.der.dib.disk.djvu.doc.docx.dwg." wide
+      $s18 = "Disable your anti-virus and anti-malware programs" fullword wide
+      $s19 = "bootable partition not mounted" fullword ascii
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 400KB and pe.imphash() == "94f57453c539227031b918edd52fc7f1" and ( 1 of ($x*) or 4 of them )
+      ) or ( all of them )
+}
+
+rule badrabbit_ransomware {
+   meta:
+      description = "Rule to detect Bad Rabbit Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+      $s1 = "schtasks /Create /RU SYSTEM /SC ONSTART /TN rhaegal /TR \"%ws /C Start \\\"\\\" \\\"%wsdispci.exe\\\" -id %u && exit\"" fullword wide
+      $s2 = "C:\\Windows\\System32\\rundll32.exe \"C:\\Windows\\" fullword wide
+      $s3 = "process call create \"C:\\Windows\\System32\\rundll32.exe" fullword wide
+      $s4 = "need to do is submit the payment and get the decryption password." fullword wide
+      $s5 = "schtasks /Create /SC once /TN drogon /RU SYSTEM /TR \"%ws\" /ST %02d:%02d:00" fullword wide
+      $s6 = "rundll32 %s,#2 %s" fullword ascii
+      $s7 = " \\\"C:\\Windows\\%s\\\" #1 " fullword wide
+      $s8 = "Readme.txt" fullword wide
+      $s9 = "wbem\\wmic.exe" fullword wide
+      $s10 = "SYSTEM\\CurrentControlSet\\services\\%ws" fullword wide
+
+      $og1 = { 39 74 24 34 74 0a 39 74 24 20 0f 84 9f }
+      $og2 = { 74 0c c7 46 18 98 dd 00 10 e9 34 f0 ff ff 8b 43 }
+      $og3 = { 8b 3d 34 d0 00 10 8d 44 24 28 50 6a 04 8d 44 24 }
+
+      $oh1 = { 39 5d fc 0f 84 03 01 00 00 89 45 c8 6a 34 8d 45 }
+      $oh2 = { e8 14 13 00 00 b8 ff ff ff 7f eb 5b 8b 4d 0c 85 }
+      $oh3 = { e8 7b ec ff ff 59 59 8b 75 08 8d 34 f5 48 b9 40 }
+
+      $oj4 = { e8 30 14 00 00 b8 ff ff ff 7f 48 83 c4 28 c3 48 }
+      $oj5 = { ff d0 48 89 45 e0 48 85 c0 0f 84 68 ff ff ff 4c }
+      $oj6 = { 85 db 75 09 48 8b 0e ff 15 34 8f 00 00 48 8b 6c }
+
+      $ok1 = { 74 0c c7 46 18 c8 4a 40 00 e9 34 f0 ff ff 8b 43 }
+      $ok2 = { 68 f8 6c 40 00 8d 95 e4 f9 ff ff 52 ff 15 34 40 }
+      $ok3 = { e9 ef 05 00 00 6a 10 58 3b f8 73 30 8b 45 f8 85 }
+
+
+   condition:
+      uint16(0) == 0x5a4d and filesize < 1000KB and (all of ($s*) and all of ($og*)) or all of ($oh*) or all of ($oj*) or all of ($ok*)
+}
+rule bitpaymer_ransomware {
+
+   meta:
+      description = "Rule to detect BitPaymer Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "IEncrypt.dll" fullword wide
+      $op0 = { e8 5f f3 ff ff ff b6 e0 }
+      $op1 = { e8 ad e3 ff ff 59 59 8b 75 08 8d 34 f5 38 eb 42 }
+      $op2 = { e9 45 ff ff ff 33 ff 8b 75 0c 6a 04 e8 c1 d1 ff }
+
+      $pdb = "S:\\Work\\_bin\\Release-Win32\\wp_encrypt.pdb" fullword ascii
+      $oj0 = { 39 74 24 34 75 53 8d 4c 24 18 e8 b8 d1 ff ff ba }
+      $oj1 = { 5f 8b c6 5e c2 08 00 56 8b f1 8d 4e 34 e8 91 af }
+      $oj2 = { 8b cb 8d bd 50 ff ff ff 8b c1 89 5f 04 99 83 c1 }
+
+      $t1 = ".C:\\aaa_TouchMeNot_.txt" fullword wide
+      $ok0 = { e8 b5 34 00 00 ff 74 24 18 8d 4c 24 54 e8 80 39 }
+      $ok1 = { 8b 5d 04 33 ff 8b 44 24 34 89 44 24 5c 85 db 7e }
+      $ok2 = { 55 55 ff 74 24 20 8d 4c 24 34 e8 31 bf 00 00 55 }
+
+      $random = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+" fullword ascii
+      $oi0 = { a1 04 30 ac 00 8b ce 0f af c2 03 c0 99 8b e8 89 }
+      $oi1 = { e8 64 a2 ff ff 85 c0 74 0c 8d 4d d8 51 ff 35 64 }
+      $oi2 = { c7 03 d4 21 ac 00 e8 86 53 00 00 89 73 10 89 7b }
+      $ou0 = { e8 64 a2 ff ff 85 c0 74 0c 8d 4d d8 51 ff 35 60 }
+      $ou1 = { a1 04 30 04 00 8b ce 0f af c2 03 c0 99 8b e8 89 }
+      $ou2 = { 8d 4c 24 10 e8 a0 da ff ff 68 d0 21 04 00 8d 4c }
+      $oa1 = { 56 52 ba 00 10 0c 00 8b f1 e8 28 63 00 00 8b c6 }
+      $oa2 = { 81 3d 50 30 0c 00 53 c6 d2 43 56 8b f1 75 23 ba }
+      $oy0 = { c7 06 cc 21 a6 00 c7 46 08 }
+      $oy1 = { c7 06 cc 21 a6 00 c7 46 08 }
+      $oy2 = { c7 06 cc 21 a6 00 c7 46 08 }
+      $oh1 = { e8 74 37 00 00 a3 00 30 fe 00 8d 4c 24 1c 8d 84 }
+      $oh2 = { 56 52 ba 00 10 fe 00 8b f1 e8 28 63 00 00 8b c6 }
+
+   condition:
+      (uint16(0) == 0x5a4d and filesize < 1000KB) and ($s1 and all of ($op*)) or ($pdb and all of ($oj*)) or ($t1 and all of ($ok*)) or ($random and all of ($oi*)) or ($random and all of ($ou*)) or ($random and all of ($oa*) and $ou0) or ($random and all of ($oy*)) or ($random and all of ($oh*)) or ($random and $ou0) or ($random and $oi1)
+}
+rule buran_ransomware
+{
+      meta:
+
+            description = "Rule to detect Buran ransomware"
+            author = "Marc Rivero | McAfee ATR Team"
+
+
+      strings:
+
+            $s1 = { 5? 8B ?? 81 C? ?? ?? ?? ?? 5? 5? 5? 33 ?? 89 ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 89 ?? ?? 89 ?? ?? 89 ?? ?? 89 ?? ?? 89 ?? ?? 89 ?? ?? 89 ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? 33 ?? 5? 68 ?? ?? ?? ?? 64 ?? ?? 64 ?? ?? C6 ?? ?? ?? ?? ?? ?? 33 ?? 5? 68 ?? ?? ?? ?? 64 ?? ?? 64 ?? ?? 8D ?? ?? ?? ?? ?? BA ?? ?? ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 8D ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? 6A ?? 8B ?? ?? E8 ?? ?? ?? ?? 5? E8 ?? ?? ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 84 ?? 0F 85 }
+            $s2 = { 4? 33 ?? 8D ?? ?? 0F B6 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? FF 7? ?? 8D ?? ?? 8B ?? ?? 8B ?? ?? 8B ?? 8B ?? FF 5? ?? FF 7? ?? 8D ?? ?? 0F B6 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? FF 7? ?? 8D ?? ?? BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 5? 8D ?? ?? 0F B6 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? FF 7? ?? 8D ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? FF 7? ?? 8D ?? ?? 0F B6 ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? FF 7? ?? 8D ?? ?? BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 5? E8 ?? ?? ?? ?? 85 ?? 74 }
+            $s3 = { A1 ?? ?? ?? ?? 99 5? 5? A1 ?? ?? ?? ?? 99 5? 5? 8B ?? ?? 8B ?? ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 5? 5? 8B ?? ?? 8B ?? ?? ?? 8B ?? ?? ?? 03 ?? ?? 13 ?? ?? ?? 83 ?? ?? E8 ?? ?? ?? ?? 5? 5? 8B ?? ?? 8B ?? ?? ?? 8B ?? ?? ?? 03 ?? ?? 13 ?? ?? ?? 83 ?? ?? 89 ?? ?? 89 ?? ?? A1 ?? ?? ?? ?? 99 5? 5? 8B ?? ?? 8B ?? ?? 8B ?? ?? ?? 8B ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8B ?? ?? 03 ?? ?? ?? 13 ?? ?? ?? 89 ?? ?? 89 ?? ?? A1 ?? ?? ?? ?? 4? 99 89 ?? ?? 89 ?? ?? FF 7? ?? FF 7? ?? 8B ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 3B ?? ?? 75 }
+            $s4 = { 5? 5? 5? 5? 8B ?? 33 ?? 5? 68 ?? ?? ?? ?? 64 ?? ?? 64 ?? ?? 68 ?? ?? ?? ?? 8D ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? B2 ?? A1 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? 89 ?? ?? 8D ?? ?? A1 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? A1 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8B ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B ?? ?? 8D ?? ?? B8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 ?? ?? ?? 0F 84 }
+            $s5 = { 5? 8B ?? 83 ?? ?? 5? 5? 5? 89 ?? ?? 8B ?? 89 ?? ?? 8B ?? ?? 8B ?? ?? 8B ?? ?? 8B ?? ?? ?? 8B ?? ?? ?? 83 ?? ?? 83 ?? ?? 5? 5? A1 ?? ?? ?? ?? 99 E8 ?? ?? ?? ?? 89 ?? ?? E8 ?? ?? ?? ?? 89 ?? ?? E8 ?? ?? ?? ?? 89 ?? ?? 8B ?? 8B ?? ?? 8B ?? ?? E8 ?? ?? ?? ?? 8D ?? ?? 8B ?? ?? 8B ?? E8 ?? ?? ?? ?? 8B ?? ?? 8B ?? E8 ?? ?? ?? ?? 8B ?? ?? 2B ?? 8B ?? 4? 5? 8B ?? ?? 8B ?? 83 ?? ?? B9 ?? ?? ?? ?? 8B ?? ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 ?? ?? 83 ?? ?? 0F 8C }
+
+
+      condition:
+
+           uint16(0) == 0x5a4d and all of them
+}
+rule clop_ransom_note {
+
+   meta:
+
+      description = "Rule to detect Clop Ransomware Note"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "If you want to restore your files write to emails" fullword ascii
+      $s2 = "All files on each host in the network have been encrypted with a strong algorithm." fullword ascii
+      $s3 = "Shadow copies also removed, so F8 or any other methods may damage encrypted data but not recover." fullword ascii
+      $s4 = "You will receive decrypted samples and our conditions how to get the decoder." fullword ascii
+      $s5 = "DO NOT RENAME OR MOVE the encrypted and readme files." fullword ascii
+      $s6 = "(Less than 6 Mb each, non-archived and your files should not contain valuable information" fullword ascii
+      $s7 = "We exclusively have decryption software for your situation" fullword ascii
+      $s8 = "Do not rename encrypted files." fullword ascii
+      $s9 = "DO NOT DELETE readme files." fullword ascii
+      $s10 = "Nothing personal just business" fullword ascii
+      $s11 = "eqaltech.su" fullword ascii
+
+   condition:
+      ( uint16(0) == 0x6f59) and filesize < 10KB and all of them
+}
+
+rule CryptoLocker_set1
+{
+
+meta:
+
+	author = "Christiaan Beek, Christiaan_Beek@McAfee.com"
+	date = "2014-04-13"
+	description = "Detection of Cryptolocker Samples"
+
+strings:
+
+	$string0 = "static"
+	$string1 = " kscdS"
+	$string2 = "Romantic"
+	$string3 = "CompanyName" wide
+	$string4 = "ProductVersion" wide
+	$string5 = "9%9R9f9q9"
+	$string6 = "IDR_VERSION1" wide
+	$string7 = "  </trustInfo>"
+	$string8 = "LookFor" wide
+	$string9 = ":n;t;y;"
+	$string10 = "        <requestedExecutionLevel level"
+	$string11 = "VS_VERSION_INFO" wide
+	$string12 = "2.0.1.0" wide
+	$string13 = "<assembly xmlns"
+	$string14 = "  <trustInfo xmlns"
+	$string15 = "srtWd@@"
+	$string16 = "515]5z5"
+	$string17 = "C:\\lZbvnoVe.exe" wide
+
+condition:
+
+	12 of ($string*)
+}
+
+rule CryptoLocker_rule2
+{
+
+meta:
+
+	author = "Christiaan Beek, Christiaan_Beek@McAfee.com"
+	date = "2014-04-14"
+	description = "Detection of CryptoLocker Variants"
+
+strings:
+
+	$string0 = "2.0.1.7" wide
+	$string1 = "    <security>"
+	$string2 = "Romantic"
+	$string3 = "ProductVersion" wide
+	$string4 = "9%9R9f9q9"
+	$string5 = "IDR_VERSION1" wide
+	$string6 = "button"
+	$string7 = "    </security>"
+	$string8 = "VFileInfo" wide
+	$string9 = "LookFor" wide
+	$string10 = "      </requestedPrivileges>"
+	$string11 = " uiAccess"
+	$string12 = "  <trustInfo xmlns"
+	$string13 = "last.inf"
+	$string14 = " manifestVersion"
+	$string15 = "FFFF04E3" wide
+	$string16 = "3,31363H3P3m3u3z3"
+
+condition:
+
+	12 of ($string*)
+}
+
+
+rule cryptonar_ransomware {
+
+   meta:
+
+      description = "Rule to detect CryptoNar Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://www.bleepingcomputer.com/news/security/cryptonar-ransomware-discovered-and-quickly-decrypted/"
+
+   strings:
+
+      $s1 = "C:\\narnar\\CryptoNar\\CryptoNarDecryptor\\obj\\Debug\\CryptoNar.pdb" fullword ascii
+      $s2 = "CryptoNarDecryptor.exe" fullword wide
+      $s3 = "server will eliminate the key after 72 hours since its generation (since the moment your computer was infected). Once this has " fullword ascii
+      $s4 = "Do not delete this file, else the decryption process will be broken" fullword wide
+      $s5 = "key you received, and wait until the decryption process is done." fullword ascii
+      $s6 = "In order to receive your decryption key, you will have to pay $200 in bitcoins to this bitcoin address: [bitcoin address]" fullword ascii
+      $s7 = "Decryption process failed" fullword wide
+      $s8 = "CryptoNarDecryptor.KeyValidationWindow.resources" fullword ascii
+      $s9 = "Important note: Removing CryptoNar will not restore access to your encrypted files." fullword ascii
+      $s10 = "johnsmith987654@tutanota.com" fullword wide
+      $s11 = "Decryption process will start soon" fullword wide
+      $s12 = "CryptoNarDecryptor.DecryptionProgressBarForm.resources" fullword ascii
+      $s13 = "DecryptionProcessProgressBar" fullword wide
+      $s14 = "CryptoNarDecryptor.Properties.Resources.resources" fullword ascii
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 2000KB) and all of them
+}
+rule SVG_LoadURL {
+
+	meta:
+
+		description = "Detects a tiny SVG file that loads an URL (as seen in CryptoWall malware infections)"
+		author = "Florian Roth"
+		reference = "http://goo.gl/psjCCc"
+		date = "2015-05-24"
+		hash1 = "ac8ef9df208f624be9c7e7804de55318"
+		hash2 = "3b9e67a38569ebe8202ac90ad60c52e0"
+		hash3 = "7e2be5cc785ef7711282cea8980b9fee"
+		hash4 = "4e2c6f6b3907ec882596024e55c2b58b"
+		score = 50
+
+	strings:
+
+		$s1 = "</svg>" nocase
+		$s2 = "<script>" nocase
+		$s3 = "location.href='http" nocase
+
+	condition:
+
+		all of ($s*) and filesize < 600
+}
+
+rule BackdoorFCKG_CTB_Locker_Ransomware
+{
+
+meta:
+
+	author = "ISG"
+	date = "2015-01-20"
+	reference = "https://blogs.mcafee.com/mcafee-labs/rise-backdoor-fckq-ctb-locker"
+	description = "CTB_Locker"
+
+strings:
+
+	$string0 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	$stringl = "RNDBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	$string2 = "keme132.DLL"
+	$string3 = "klospad.pdb"
+
+condition:
+
+	3 of them
+}
+rule crime_ransomware_windows_GPGQwerty
+{
+meta:
+
+	author = "McAfee Labs"
+	description = "Detect GPGQwerty ransomware"
+	reference = "https://securingtomorrow.mcafee.com/mcafee-labs/ransomware-takes-open-source-path-encrypts-gnu-privacy-guard/"
+	date = "2018-03-21"
+
+strings:
+
+	$a = "gpg.exe ???recipient qwerty  -o"
+	$b = "%s%s.%d.qwerty"
+	$c = "del /Q /F /S %s$recycle.bin"
+	$d = "cryz1@protonmail.com"
+
+condition:
+	all of them
+}
+rule kraken_cryptor_ransomware_loader {
+
+   meta:
+
+      description = "Rule to detect the Kraken Cryptor Ransomware loader"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $pdb = "C:\\Users\\Krypton\\source\\repos\\UAC\\UAC\\obj\\Release\\UAC.pdb" fullword ascii
+      $s2 = "SOFTWARE\\Classes\\mscfile\\shell\\open\\command" fullword wide
+      $s3 = "public_key" fullword ascii
+      $s4 = "KRAKEN DECRYPTOR" ascii
+      $s5 = "UNIQUE KEY" fullword ascii
+
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 600KB ) and $pdb or all of ($s*)
+}
+
+rule kraken_cryptor_ransomware {
+
+   meta:
+
+      description = "Rule to detect the Kraken Cryptor Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "Kraken Cryptor" fullword ascii nocase
+      $s2 = "support_email" fullword ascii
+      $fw1 = "L0MgbmV0c2ggYWR2ZmlyZXdhbGwgZmlyZXdhbGwgYWRkIHJ1bGUgbmFtZT0iU01CIFByb3RvY29sIEJsb2NrIiBwcm90b2NvbD1UQ1AgZGlyPWluIGxvY2FscG9ydD00" ascii
+      $fw2 = "L0MgbmV0c2ggYWR2ZmlyZXdhbGwgZmlyZXdhbGwgYWRkIHJ1bGUgbmFtZT0iUkRQIFByb3RvY29sIEJsb2NrIiBwcm90b2NvbD1UQ1AgZGlyPWluIGxvY2FscG9ydD0z" ascii
+      $fw3 = "L0MgbmV0c2ggYWR2ZmlyZXdhbGwgZmlyZXdhbGwgYWRkIHJ1bGUgbmFtZT0iUkRQIFByb3RvY29sIEJsb2NrIiBwcm90b2NvbD1UQ1AgZGlyPWluIGxvY2FscG9ydD0z" ascii
+      $fw4 = "L0MgbmV0c2ggYWR2ZmlyZXdhbGwgZmlyZXdhbGwgYWRkIHJ1bGUgbmFtZT0iU01CIFByb3RvY29sIEJsb2NrIiBwcm90b2NvbD1UQ1AgZGlyPWluIGxvY2FscG9ydD00" ascii
+      $uac = "<!--<requestedExecutionLevel level=\"asInvoker\" uiAccess=\"false\" />-->   " fullword ascii
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 600KB ) and all of ($fw*) or all of ($s*) or $uac
+}
+
+rule ransom_note_kraken_cryptor_ransomware {
+
+   meta:
+
+      description = "Rule to detect the ransom note delivered by Kraken Cryptor Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $s1 = "No way to recovery your files without \"KRAKEN DECRYPTOR\" software and your computer \"UNIQUE KEY\"!" fullword ascii
+      $s2 = "Are you want to decrypt all of your encrypted files? If yes! You need to pay for decryption service to us!" fullword ascii
+      $s3 = "The speed, power and complexity of this encryption have been high and if you are now viewing this guide." fullword ascii
+      $s4 = "Project \"KRAKEN CRYPTOR\" doesn't damage any of your files, this action is reversible if you follow the instructions above." fullword ascii
+      $s5 = "https://localBitcoins.com" fullword ascii
+      $s6 = "For the decryption service, we also need your \"KRAKEN ENCRYPTED UNIQUE KEY\" you can see this in the top!" fullword ascii
+      $s7 = "-----BEGIN KRAKEN ENCRYPTED UNIQUE KEY----- " fullword ascii
+      $s8 = "All your files has been encrypted by \"KRAKEN CRYPTOR\"." fullword ascii
+      $s9 = "It means that \"KRAKEN CRYPTOR\" immediately removed form your system!" fullword ascii
+      $s10 = "After your payment made, all of your encrypted files has been decrypted." fullword ascii
+      $s11 = "Don't delete .XKHVE files! there are not virus and are your files, but encrypted!" fullword ascii
+      $s12 = "You can decrypt one of your encrypted smaller file for free in the first contact with us." fullword ascii
+      $s13 = "You must register on this site and click \"BUY Bitcoins\" then choose your country to find sellers and their prices." fullword ascii
+      $s14 = "-----END KRAKEN ENCRYPTED UNIQUE KEY-----" fullword ascii
+      $s15 = "DON'T MODIFY \"KRAKEN ENCRYPT UNIQUE KEY\"." fullword ascii
+      $s16 = "# Read the following instructions carefully to decrypt your files." fullword ascii
+      $s17 = "We use best and easy way to communications. It's email support, you can see our emails below." fullword ascii
+      $s18 = "DON'T USE THIRD PARTY, PUBLIC TOOLS/SOFTWARE TO DECRYPT YOUR FILES, THIS CAUSE DAMAGE YOUR FILES PERMANENTLY." fullword ascii
+      $s19 = "https://en.wikipedia.org/wiki/Bitcoin" fullword ascii
+      $s20 = "Please send your message with same subject to both address." fullword ascii
+   condition:
+
+      ( uint16(0) == 0x4120 and filesize < 9KB ) and all of them
+}
+rule locdoor_ransomware {
+
+   meta:
+
+      description = "Rule to detect Locdoor/DryCry"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://twitter.com/leotpsc/status/1036180615744376832"
+
+   strings:
+
+      $s1 = "copy \"Locdoor.exe\" \"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\temp00000000.exe\"" fullword ascii
+      $s2 = "copy wscript.vbs C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\wscript.vbs" fullword ascii
+      $s3 = "!! Your computer's important files have been encrypted! Your computer's important files have been encrypted!" fullword ascii
+      $s4 = "echo CreateObject(\"SAPI.SpVoice\").Speak \"Your computer's important files have been encrypted! " fullword ascii
+      $s5 = "! Your computer's important files have been encrypted! " fullword ascii
+      $s7 = "This program is not supported on your operating system." fullword ascii
+      $s8 = "echo Your computer's files have been encrypted to Locdoor Ransomware! To make a recovery go to localbitcoins.com and create a wa" ascii
+      $s9 = "Please enter the password." fullword ascii
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 600KB ) and all of them
+}
+
+rule LockerGogaRansomware {
+
+   meta:
+
+      description = "LockerGoga Ransomware"
+      author = "Christiaan Beek - McAfee ATR team"
+      date = "2019-03-20"
+      hash1 = "88d149f3e47dc337695d76da52b25660e3a454768af0d7e59c913995af496a0f"
+      hash2 = "c97d9bbc80b573bdeeda3812f4d00e5183493dd0d5805e2508728f65977dda15"
+      hash3 = "ba15c27f26265f4b063b65654e9d7c248d0d651919fafb68cb4765d1e057f93f"
+
+   strings:
+
+      $1 = "boost::interprocess::spin_recursive_mutex recursive lock overflow" fullword ascii
+      $2 = ".?AU?$error_info_injector@Usync_queue_is_closed@concurrent@boost@@@exception_detail@boost@@" fullword ascii
+      $3 = ".?AV?$CipherModeFinalTemplate_CipherHolder@V?$BlockCipherFinal@$00VDec@RC6@CryptoPP@@@CryptoPP@@VCBC_Decryption@2@@CryptoPP@@" fullword ascii
+      $4 = "?http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v" fullword ascii
+      $5 = "cipher.exe" fullword ascii
+      $6 = ".?AU?$placement_destroy@Utrace_queue@@@ipcdetail@interprocess@boost@@" fullword ascii
+      $7 = "3http://crt.usertrust.com/USERTrustRSAAddTrustCA.crt0%" fullword ascii
+      $8 = "CreateProcess failed" fullword ascii
+      $9 = "boost::dll::shared_library::load() failed" fullword ascii
+      $op1 = { 8b df 83 cb 0f 81 fb ff ff ff 7f 76 07 bb ff ff }
+      $op2 = { 8b df 83 cb 0f 81 fb ff ff ff 7f 76 07 bb ff ff }
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 2000KB and ( 6 of them ) and all of ($op*)) or ( all of them )
+}
+rule loocipher_ransomware {
+
+   meta:
+
+      description = "Rule to detect Loocipher ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $x1 = "c:\\users\\usuario\\desktop\\cryptolib\\gfpcrypt.h" fullword ascii
+      $x2 = "c:\\users\\usuario\\desktop\\cryptolib\\eccrypto.h" fullword ascii
+      $s3 = "c:\\users\\usuario\\desktop\\cryptolib\\gf2n.h" fullword ascii
+      $s4 = "c:\\users\\usuario\\desktop\\cryptolib\\queue.h" fullword ascii
+      $s5 = "ThreadUserTimer: GetThreadTimes failed with error " fullword ascii
+      $s6 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<struct CryptoPP::ProjectivePoint> > >::operator *" fullword wide
+      $s7 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<struct CryptoPP::ProjectivePoint> > >::operator +=" fullword wide
+      $s8 = "std::basic_string<unsigned short,struct std::char_traits<unsigned short>,class std::allocator<unsigned short> >::operator []" fullword wide
+      $s9 = "std::vector<struct CryptoPP::ProjectivePoint,class std::allocator<struct CryptoPP::ProjectivePoint> >::operator []" fullword wide
+      $s10 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<class CryptoPP::Integer> > >::operator *" fullword wide
+      $s11 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<class CryptoPP::Integer> > >::operator +=" fullword wide
+      $s12 = "std::vector<struct CryptoPP::WindowSlider,class std::allocator<struct CryptoPP::WindowSlider> >::operator []" fullword wide
+      $s13 = "std::istreambuf_iterator<char,struct std::char_traits<char> >::operator ++" fullword wide
+      $s14 = "std::istreambuf_iterator<char,struct std::char_traits<char> >::operator *" fullword wide
+      $s15 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<struct CryptoPP::ProjectivePoint> > >::_Compat" fullword wide
+      $s16 = "std::vector<class CryptoPP::PolynomialMod2,class std::allocator<class CryptoPP::PolynomialMod2> >::operator []" fullword wide
+      $s17 = "DL_ElgamalLikeSignatureAlgorithm: this signature scheme does not support message recovery" fullword ascii
+      $s18 = "std::vector<struct CryptoPP::ECPPoint,class std::allocator<struct CryptoPP::ECPPoint> >::operator []" fullword wide
+      $s19 = "std::vector<struct CryptoPP::EC2NPoint,class std::allocator<struct CryptoPP::EC2NPoint> >::operator []" fullword wide
+      $s20 = "std::_Vector_const_iterator<class std::_Vector_val<struct std::_Simple_types<class CryptoPP::Integer> > >::_Compat" fullword wide
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 17000KB and ( 1 of ($x*) and 4 of them ) ) or ( all of them )
+}
+
+rule magniber_test_unpacked_ransomware {
+
+    meta:
+
+      description = "Rule to detect Magniber ransomware samples"
+      author = "Marc Rivero | ATR Team"
+
+    strings:
+      $s1 = ":\\documents and settings\\default user\\" fullword wide
+      $s2 = ":\\documents and settings\\networkservice\\" fullword wide
+      $s3 = ":\\documents and settings\\all users\\" fullword wide
+      $s4 = ":\\documents and settings\\localservice\\" fullword wide
+      $s5 = "\\appdata\\roaming\\" fullword wide
+      $s6 = "\\appdata\\locallow\\" fullword wide
+      $s7 = "\\appdata\\local\\" fullword wide
+      $s8 = "\\recycler" fullword wide
+      $s9 = "\\$recycle.bin" fullword wide
+      $s10 = "\\system volume information" fullword wide
+      $s11 = "\\perflogs" fullword wide
+      $s12 = "\\public\\pictures\\sample pictures\\" fullword wide
+      $s13 = "\\public\\videos\\sample videos\\" fullword wide
+      $s14 = "\\windows.old" fullword wide
+      $s15 = "\\recycled" fullword wide
+      $s16 = "\\public\\music\\sample music\\" fullword wide
+      $s17 = "wallet" fullword wide
+      $s18 = "sqlitedb" fullword wide
+
+    condition:
+
+      uint16(0) == 0x5a4d and filesize < 100KB or 8 of them
+}
+rule ransom_monglock {
+   meta:
+      description = "Ransomware encrypting Mongo Databases "
+      author = "Christiaan Beek - McAfee ATR team"
+      date = "2019-04-25"
+      hash1 = "ef80edbea5e22f134bd76704bec003fbd0c16098f73e1c501c514cb728bd566b"
+      hash2 = "8f8455252f3e4518dc80b9cfc426b7ce20d228e243f72c07c8e9d076045462d0"
+      hash3 = "98bb99db9969f80c174919f16982e42dbd9b916c8925c36ba4f7146e3f29215c"
+      hash4 = "ccbbfd383e3164a2dff1245e75fb1622fc092d1a90edb2f259730dfd23bf2538"
+      hash5 = "c4de2d485ec862b308d00face6b98a7801ce4329a8fc10c63cf695af537194a8"
+   strings:
+      $x1 = "C:\\Windows\\system32\\cmd.exe" fullword wide
+      $s1 = "and a Proof of Payment together will be ignored. We will drop the backup after 24 hours. You are welcome! " fullword ascii
+      $s2 = "Your File and DataBase is downloaded and backed up on our secured servers. To recover your lost data : Send 0.1 BTC to our BitCoin" ascii
+      $s3 = "No valid port number in connect to host string (%s)" fullword ascii
+      $s4 = "SOCKS4%s: connecting to HTTP proxy %s port %d" fullword ascii
+      $s5 = "# https://curl.haxx.se/docs/http-cookies.html" fullword ascii
+      $s6 = "Connection closure while negotiating auth (HTTP 1.0?)" fullword ascii
+      $s7 = "detail may be available in the Windows System event log." fullword ascii
+      $s8 = "Found bundle for host %s: %p [%s]" fullword ascii
+      $s9 = "No valid port number in proxy string (%s)" fullword ascii
+
+
+      $op0 = { 50 8d 85 78 f6 ff ff 50 ff b5 70 f6 ff ff ff 15 }
+      $op1 = { 83 fb 01 75 45 83 7e 14 08 72 34 8b 0e 66 8b 45 }
+      $op2 = { c7 41 0c df ff ff ff c7 41 10 }
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 2000KB and ( 1 of ($x*) and 4 of them ) and all of ($op*)
+      ) or ( all of them )
+}
+
+rule nemty_ransomware {
+
+   meta:
+
+      description = "Rule to detect Nemty Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+
+   strings:
+
+      $x1 = "/c vssadmin.exe delete shadows /all /quiet & bcdedit /set {default} bootstatuspolicy ignoreallfailures & bcdedit /set {default}" fullword ascii
+      $s2 = "https://pbs.twimg.com/media/Dn4vwaRW0AY-tUu.jpg:large :D" fullword ascii
+      $s3 = "MSDOS.SYS" fullword wide
+      $s4 = "/c vssadmin.exe delete shadows /all /quiet & bcdedit /set {default} bootstatuspolicy ignoreallfailures & bcdedit /set {default} " ascii
+      $s5 = "recoveryenabled no & wbadmin delete catalog -quiet & wmic shadowcopy delete" fullword ascii
+      $s6 = "DECRYPT.txt" fullword ascii
+      $s7 = "pv3mi+NQplLqkkJpTNmji/M6mL4NGe5IHsRFJirV6HSyx8mC8goskf5lXH2d57vh52iqhhEc5maLcSrIKbukcnmUwym+In1OnvHp070=" fullword ascii
+      $s8 = "\\NEMTY-DECRYPT.txt\"" fullword ascii
+      $s9 = "rfyPvccxgVaLvW9OOY2J090Mq987N9lif/RoIDP89luS9Ouv9gUImpgCTVGWvJzrqiS8hQ5El02LdEvKcJ+7dn3DxiXSNG1PwLrY59KzGs/gUvXnYcmT6t34qfZmr8g8" ascii
+      $s10 = "IO.SYS" fullword wide
+      $s11 = "QgzjKXcD1Jh/cOLBh1OMb+rWxUbToys2ArG9laNWAWk0rNIv2dnIDpc+mSbp91E8qVN8Mv8K5jC3EBr4TB8jh5Ns/onBhPZ9rLXR7wIkaXGeTZi/4/XOtO3DFiad4+vf" ascii
+      $s12 = "NEMTY-DECRYPT.txt" fullword wide
+      $s13 = "pvXmjPQRoUmjj0g9QZ24wvEqyvcJVvFWXc0LL2XL5DWmz8me5wElh/48FHKcpbnq8C2kwQ==" fullword ascii
+      $s14 = "a/QRAGlNLvqNuONkUWCQTNfoW45DFkZVjUPn0t3tJQnHWPhJR2HWttXqYpQQIMpn" fullword ascii
+      $s15 = "KeoJrLFoTgXaTKTIr+v/ObwtC5BKtMitXq8aaDT8apz98QQvQgMbncLSJWJG+bHvaMhG" fullword ascii
+      $s16 = "pu/hj6YerUnqlUM9A8i+i/UhnvsIE+9XTYs=" fullword ascii
+      $s17 = "grQkLxaGvL0IBGGCRlJ8Q4qQP/midozZSBhFGEDpNElwvWXhba6kTH1LoX8VYNOCZTDzLe82kUD1TSAoZ/fz+8QN7pLqol5+f9QnCLB9QKOi0OmpIS1DLlngr9YH99vt" ascii
+      $s18 = "BOOTSECT.BAK" fullword wide
+      $s19 = "bbVU/9TycwPO+5MgkokSHkAbUSRTwcbYy5tmDXAU1lcF7d36BTpfvzaV5/VI6ARRt2ypsxHGlnOJQUTH6Ya//Eu0jPi/6s2MmOk67csw/msiaaxuHXDostsSCC+kolVX" ascii
+      $s20 = "puh4wXjVYWJzFN6aIgnClL4W/1/5Eg6bm5uEv6Dru0pfOvhmbF1SY3zav4RQVQTYMfZxAsaBYfJ+Gx+6gDEmKggypl1VcVXWRbxAuDIXaByh9aP4B2QvhLnJxZLe+AG5" ascii
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 400KB and ( 1 of ($x*) and 4 of them ))
+}
+rule pico_ransomware {
+
+   meta:
+
+      description = "Rule to detect Pico Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://twitter.com/siri_urz/status/1035138577934557184"
+
+   strings:
+
+      $s1 = "C:\\Users\\rikfe\\Desktop\\Ransomware\\ThanatosSource\\Release\\Ransomware.pdb" fullword ascii
+      $s2 = "\\Downloads\\README.txt" fullword ascii
+      $s3 = "\\Music\\README.txt" fullword ascii
+      $s4 = "\\Videos\\README.txt" fullword ascii
+      $s5 = "\\Pictures\\README.txt" fullword ascii
+      $s6 = "\\Desktop\\README.txt" fullword ascii
+      $s7 = "\\Documents\\README.txt" fullword ascii
+      $s8 = "/c taskkill /im " fullword ascii
+      $s9 = "\\AppData\\Roaming\\" fullword ascii
+      $s10 = "gMozilla/5.0 (Windows NT 6.1) Thanatos/1.1" fullword wide
+      $s11 = "AppData\\Roaming" fullword ascii
+      $s12 = "\\Downloads" fullword ascii
+      $s13 = "operator co_await" fullword ascii
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 700KB ) and all of them
+}
+
+rule Robbinhood_ransomware {
+   meta:
+      description = "Robbinhood GoLang ransowmare"
+      author = "Christiaan Beek @ McAfee ATR"
+      date = "2019-05-10"
+      hash1 = "9977ba861016edef0c3fb38517a8a68dbf7d3c17de07266cfa515b750b0d249e"
+      hash2 = "27f9f740263b73a9b7e6dd8071c8ca2b2c22f310bde9a650fc524a4115f2fa14"
+      hash3 = "3bc78141ff3f742c5e942993adfbef39c2127f9682a303b5e786ed7f9a8d184b"
+      hash4 = "4e58b0289017d53dda4c912f0eadf567852199d044d2e2bda5334eb97fa0b67c"
+      hash5 = "21cb84fc7b33e8e31364ff0e58b078db8f47494a239dc3ccbea8017ff60807e3"
+      hash6 = "e128d5aa0b5a9c6851e69cbf9d2c983eefd305a10cba7e0c8240c8e2f79a544f"
+   strings:
+      $s1 = ".enc_robbinhood" nocase
+      $s2 = "sc.exe stop SQLAgent$SQLEXPRESS" nocase
+      $s3 = "pub.key" nocase
+      $s4 = "main.EnableShadowFucks" nocase
+      $s5 = "main.EnableRecoveryFCK" nocase
+      $s6 = "main.EnableLogLaunders" nocase
+      $s7 = "main.EnableServiceFuck" nocase
+
+
+      $op0 = { 8d 05 2d 98 51 00 89 44 24 30 c7 44 24 34 1d }
+      $op1 = { 8b 5f 10 01 c3 8b 47 04 81 c3 b5 bc b0 34 8b 4f }
+      $op2 = { 0f b6 34 18 8d 7e d0 97 80 f8 09 97 77 39 81 fd }
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 3000KB and ( 1 of ($s*) ) and all of ($op*)
+      ) or ( all of them )
+}
+
+rule Ryuk_Ransomware {
+   meta:
+      description = "Ryuk Ransomware hunting rule"
+      author = "Christiaan Beek - McAfee ATR team"
+      reference = "https://securingtomorrow.mcafee.com/other-blogs/mcafee-labs/ryuk-ransomware-attack-rush-to-attribution-misses-the-point/"
+      date = "2019-04-25"
+   strings:
+      $x1 = "C:\\Windows\\System32\\cmd.exe" fullword ascii
+      $x2 = "\\System32\\cmd.exe" fullword wide
+      $s1 = "C:\\Users\\Admin\\Documents\\Visual Studio 2015\\Projects\\ConsoleApplication54new crypted" ascii
+      $s2 = "fg4tgf4f3.dll" fullword wide
+      $s3 = "lsaas.exe" fullword wide
+      $s4 = "\\Documents and Settings\\Default User\\sys" fullword wide
+      $s5 = "\\Documents and Settings\\Default User\\finish" fullword wide
+      $s6 = "\\users\\Public\\sys" fullword wide
+      $s7 = "\\users\\Public\\finish" fullword wide
+      $s8 = "You will receive btc address for payment in the reply letter" fullword ascii
+      $s9 = "hrmlog" fullword wide
+      $s10 = "No system is safe" fullword ascii
+      $s11 = "keystorage2" fullword wide
+      $s12 = "klnagent" fullword wide
+      $s13 = "sqbcoreservice" fullword wide
+      $s14 = "tbirdconfig" fullword wide
+      $s15 = "taskkill" fullword wide
+
+      $op0 = { 8b 40 10 89 44 24 34 c7 84 24 c4 }
+      $op1 = { c7 44 24 34 00 40 00 00 c7 44 24 38 01 }
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 400KB and ( 1 of ($x*) and 4 of them ) and all of ($op*)
+      ) or ( all of them )
+}
+
+rule SAmSAmRansom2016 {
+
+   meta:
+
+      author = "Christiaan Beek"
+      date = "2018-01-25"
+      hash1 = "45e00fe90c8aa8578fce2b305840e368d62578c77e352974da6b8f8bc895d75b"
+      hash2 = "946dd4c4f3c78e7e4819a712c7fd6497722a3d616d33e3306a556a9dc99656f4"
+      hash3 = "979692a34201f9fc1e1c44654dc8074a82000946deedfdf6b8985827da992868"
+      hash4 = "939efdc272e8636fd63c1b58c2eec94cf10299cd2de30c329bd5378b6bbbd1c8"
+      hash5 = "a763ed678a52f77a7b75d55010124a8fccf1628eb4f7a815c6d635034227177e"
+      hash6 = "e682ac6b874e0a6cfc5ff88798315b2cb822d165a7e6f72a5eb74e6da451e155"
+      hash7 = "6bc2aa391b8ef260e79b99409e44011874630c2631e4487e82b76e5cb0a49307"
+      hash8 = "036071786d7db553e2415ec2e71f3967baf51bdc31d0a640aa4afb87d3ce3050"
+      hash9 = "ffef0f1c2df157e9c2ee65a12d5b7b0f1301c4da22e7e7f3eac6b03c6487a626"
+      hash10 = "89b4abb78970cd524dd887053d5bcd982534558efdf25c83f96e13b56b4ee805"
+      hash11 = "7aa585e6fd0a895c295c4bea2ddb071eed1e5775f437602b577a54eef7f61044"
+      hash12 = "0f2c5c39494f15b7ee637ad5b6b5d00a3e2f407b4f27d140cd5a821ff08acfac"
+      hash13 = "58ef87523184d5df3ed1568397cea65b3f44df06c73eadeb5d90faebe4390e3e"
+
+   strings:
+
+      $x1 = "Could not list processes locking resource. Failed to get size of result." fullword wide
+      $s2 = "Could not list processes locking resource." fullword wide
+      $s3 = "samsam.del.exe" fullword ascii
+      $s4 = "samsam.exe" fullword wide
+      $s5 = "RM_UNIQUE_PROCESS" fullword ascii
+      $s6 = "KillProcessWithWait" fullword ascii
+      $s7 = "killOpenedProcessTree" fullword ascii
+      $s8 = "RM_PROCESS_INFO" fullword ascii
+      $s9 = "Exception caught in process: {0}" fullword wide
+      $s10 = "Could not begin restart session.  Unable to determine file locker." fullword wide
+      $s11 = "samsam.Properties.Resources.resources" fullword ascii
+      $s12 = "EncryptStringToBytes" fullword ascii
+      $s13 = "recursivegetfiles" fullword ascii
+      $s14 = "RSAEncryptBytes" fullword ascii
+      $s15 = "encryptFile" fullword ascii
+      $s16 = "samsam.Properties.Resources" fullword wide
+      $s17 = "TSSessionId" fullword ascii
+      $s18 = "Could not register resource." fullword wide
+      $s19 = "<recursivegetfiles>b__0" fullword ascii
+      $s20 = "create_from_resource" fullword ascii
+
+      $op0 = { 96 00 e0 00 29 00 0b 00 34 23 }
+      $op1 = { 96 00 12 04 f9 00 34 00 6c 2c }
+      $op2 = { 72 a5 0a 00 70 a2 06 20 94 }
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 700KB and pe.imphash() == "f34d5f2d4577ed6d9ceec516c1f5a744" and ( 1 of ($x*) and 4 of them ) and all of ($op*)) or ( all of them )
+}
+
+rule SamSam_Ransomware_Latest
+{
+
+   meta:
+
+      description = "Latest SamSA ransomware samples"
+      author = "Christiaan Beek"
+      reference = "http://blog.talosintelligence.com/2018/01/samsam-evolution-continues-netting-over.html"
+      date = "2018-01-23"
+      hash1 = "e7bebd1b1419f42293732c70095f35c8310fa3afee55f1df68d4fe6bbee5397e"
+      hash2 = "72832db9b951663b8f322778440b8720ea95cde0349a1d26477edd95b3915479"
+      hash3 = "3531bb1077c64840b9c95c45d382448abffa4f386ad88e125c96a38166832252"
+      hash4 = "88d24b497cfeb47ec6719752f2af00c802c38e7d4b5d526311d552c6d5f4ad34"
+      hash5 = "8eabfa74d88e439cfca9ccabd0ee34422892d8e58331a63bea94a7c4140cf7ab"
+      hash6 = "88e344977bf6451e15fe202d65471a5f75d22370050fe6ba4dfa2c2d0fae7828"
+
+strings:
+
+      $s1 = "bedf08175d319a2f879fe720032d11e5" fullword wide
+      $s2 = "ksdghksdghkddgdfgdfgfd" fullword ascii
+      $s3 = "osieyrgvbsgnhkflkstesadfakdhaksjfgyjqqwgjrwgehjgfdjgdffg" fullword ascii
+      $s4 = "5c2d376c976669efaf9cb107f5a83d0c" fullword wide
+      $s5 = "B917754BCFE717EB4F7CE04A5B11A6351EEC5015" fullword ascii
+      $s6 = "f99e47c1d4ccb2b103f5f730f8eb598a" fullword wide
+      $s7 = "d2db284217a6e5596913e2e1a5b2672f" fullword wide
+      $s8 = "0bddb8acd38f6da118f47243af48d8af" fullword wide
+      $s9 = "f73623dcb4f62b0e5b9b4d83e1ee4323" fullword wide
+      $s10 = "916ab48e32e904b8e1b87b7e3ced6d55" fullword wide
+      $s11 = "c6e61622dc51e17195e4df6e359218a2" fullword wide
+      $s12 = "2a9e8d549af13031f6bf7807242ce27f" fullword wide
+      $s13 = "e3208957ad76d2f2e249276410744b29" fullword wide
+      $s14 = "b4d28bbd65da97431f494dd7741bee70" fullword wide
+      $s15 = "81ee346489c272f456f2b17d96365c34" fullword wide
+      $s16 = "94682debc6f156b7e90e0d6dc772734d" fullword wide
+      $s17 = "6943e17a989f11af750ea0441a713b89" fullword wide
+      $s18 = "b1c7e24b315ff9c73a9a89afac5286be" fullword wide
+      $s19 = "90928fd1250435589cc0150849bc0cff" fullword wide
+      $s20 = "67da807268764a7badc4904df351932e" fullword wide
+
+      $op0 = { 30 01 00 2b 68 79 33 38 68 34 77 65 36 34 74 72 }
+      $op1 = { 01 00 b2 04 00 00 01 00 84 }
+      $op2 = { 68 09 00 00 38 66 00 00 23 55 53 00 a0 6f 00 00 }
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 100KB and pe.imphash() == "f34d5f2d4577ed6d9ceec516c1f5a744" and ( 8 of them ) and all of ($op*)) or ( all of them )
+}
+rule unpacked_shiva_ransomware {
+
+   meta:
+
+      description = "Rule to detect an unpacked sample of Shiva ransopmw"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://twitter.com/malwrhunterteam/status/1037424962569732096"
+
+   strings:
+
+      $s1 = "c:\\Users\\sys\\Desktop\\v 0.5\\Shiva\\Shiva\\obj\\Debug\\shiva.pdb" fullword ascii
+      $s2 = "This email will be as confirmation you are ready to pay for decryption key." fullword wide
+      $s3 = "Your important files are now encrypted due to a security problem with your PC!" fullword wide
+      $s4 = "write.php?info=" fullword wide
+      $s5 = " * Do not try to decrypt your data using third party software, it may cause permanent data loss." fullword wide
+      $s6 = " * Do not rename encrypted files." fullword wide
+      $s7 = ".compositiontemplate" fullword wide
+      $s8 = "You have to pay for decryption in Bitcoins. The price depends on how fast you write to us." fullword wide
+      $s9 = "\\READ_IT.txt" fullword wide
+      $s10 = ".lastlogin" fullword wide
+      $s11 = ".logonxp" fullword wide
+      $s12 = " * Decryption of your files with the help of third parties may cause increased price" fullword wide
+      $s13 = "After payment we will send you the decryption tool that will decrypt all your files." fullword wide
+
+   condition:
+
+      ( uint16(0) == 0x5a4d and filesize < 800KB ) and all of them
+}
+rule shrug2_ransomware {
+
+   meta:
+
+      description = "Rule to detect the Shrug Ransomware"
+      author = "Marc Rivero | McAfee ATR Team"
+      reference = "https://blogs.quickheal.com/new-net-ransomware-shrug2/"
+
+   strings:
+
+      $s1 = "C:\\Users\\Gamer\\Desktop\\Shrug2\\ShrugTwo\\ShrugTwo\\obj\\Debug\\ShrugTwo.pdb" fullword ascii
+      $s2 = "http://tempacc11vl.000webhostapp.com/" fullword wide
+      $s4 = "Shortcut for @ShrugDecryptor@.exe" fullword wide
+      $s5 = "C:\\Users\\" fullword wide
+      $s6 = "http://clients3.google.com/generate_204" fullword wide
+      $s7 = "\\Desktop\\@ShrugDecryptor@.lnk" fullword wide
+
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 2000KB ) and all of them
+}
+
+rule ransomware_sodinokibi {
+   meta:
+      description = "Using a recently disclosed vulnerability in Oracle WebLogic, criminals use it to install a new variant of ransomware called ???Sodinokibi"
+      author = "Christiaan Beek | McAfee ATR team"
+      date = "2019-05-13"
+      hash1 = "95ac3903127b74f8e4d73d987f5e3736f5bdd909ba756260e187b6bf53fb1a05"
+      hash2 = "34dffdb04ca07b014cdaee857690f86e490050335291ccc84c94994fa91e0160"
+      hash3 = "0fa207940ea53e2b54a2b769d8ab033a6b2c5e08c78bf4d7dade79849960b54d"
+      hash4 = "9b62f917afa1c1a61e3be0978c8692dac797dd67ce0e5fd2305cc7c6b5fef392"
+   strings:
+      $x1 = "sodinokibi.exe" fullword wide
+
+      $y0 = { 8d 85 6c ff ff ff 50 53 50 e8 62 82 00 00 83 c4 }
+      $y1 = { e8 24 ea ff ff ff 75 08 8b ce e8 61 fc ff ff 8b }
+      $y2 = { e8 01 64 ff ff ff b6 b0 }
+   condition:
+      ( uint16(0) == 0x5a4d and filesize < 900KB and pe.imphash() == "672b84df309666b9d7d2bc8cc058e4c2" and ( 8 of them ) and all of ($y*)
+      ) or ( all of them )
+}
+
+rule Sodinokobi
+{
+    /*
+      This rule detects Sodinokobi Ransomware in memory in old samples and perhaps future.
+    */
+    meta:
+        author      = "McAfee ATR team"
+        version     = "1.0"
+        description = "This rule detect Sodinokobi Ransomware in memory in old samples and perhaps future."
+    strings:
+        $a = { 40 0F B6 C8 89 4D FC 8A 94 0D FC FE FF FF 0F B6 C2 03 C6 0F B6 F0 8A 84 35 FC FE FF FF 88 84 0D FC FE FF FF 88 94 35 FC FE FF FF 0F B6 8C 0D FC FE FF FF }
+        $b = { 0F B6 C2 03 C8 8B 45 14 0F B6 C9 8A 8C 0D FC FE FF FF 32 0C 07 88 08 40 89 45 14 8B 45 FC 83 EB 01 75 AA }
+    condition:
+        all of them
+}
+rule rat_comrat
+{
+	 meta:
+		 description = "Rule to detect the ComRAT RAT"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "28dc1ca683d6a14d0d1794a68c477604"
+
+	 strings:
+
+	 	$pdb = "\\projects\\ChinckSkx64\\Debug\\Chinch.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule DarkcometRAT_PDB
+{
+	 meta:
+	 description = "Rle to detect an old DarkcometRAT based on the PDB"
+	 author = "Marc Rivero | McAfee ATR Team"
+	 hash = "6A659FB586F243C5FB12B780F5F00BFE"
+
+	 strings:
+
+	 	$pdb = "\\Users\\MY\\AppData\\Local\\TemporaryProjects\\Chrome\\obj\\x86\\Debug\\Chrome.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule LostdoorRAT_pdb
+{
+	 meta:
+		 description = "Rule to detect LostdoorRAT based on PDB"
+		 author = "Marc Rivero | McAfee ATR Team"
+		 hash = "FB1B0536B4660E67E8AA7BAB17994A7C"
+
+	 strings:
+
+	 	$pdb = "\\Users\\Aegis\\Documents\\Visual Studio 2008\\Projects\\stub1\\Release\\stub.pdb"
+
+	 condition:
+
+	 	any of them
+}
+rule SpyGate_v2_9
+{
+	meta:
+
+		date = "2014/09"
+		maltype = "Spygate v2.9 Remote Access Trojan"
+		filetype = "exe"
+		reference = "https://blogs.mcafee.com/mcafee-labs/middle-east-developer-spygate-struts-stuff-online"
+
+	strings:
+
+		$1 = "shutdowncomputer" wide
+		$2 = "shutdown -r -t 00" wide
+		$3 = "blockmouseandkeyboard" wide
+		$4 = "ProcessHacker"
+		$5 = "FileManagerSplit" wide
+
+	condition:
+		all of them
+}
+rule CredStealESY
+{
+
+ meta:
+
+	description = "Generic Rule to detect the CredStealer Malware"
+	author = "IsecG ??? McAfee Labs"
+	date = "2015/05/08"
+
+strings:
+
+$my_hex_string = "CurrentControlSet\\Control\\Keyboard Layouts\\" wide //malware trying to get keyboard layout
+$my_hex_string2 = {89 45 E8 3B 7D E8 7C 0F 8B 45 E8 05 FF 00 00 00 2B C7 89 45 E8} //specific decryption module
+
+condition:
+
+	$my_hex_string and $my_hex_string2
+}
+rule EmiratesStatement
+{
+	meta:
+
+		Author 		= "Christiaan Beek"
+		Date 		= "2013-06-30"
+		Description = "Credentials Stealing Attack"
+		Reference 	= "https://blogs.mcafee.com/mcafee-labs/targeted-campaign-steals-credentials-in-gulf-states-and-caribbean"
+
+		hash0 = "0e37b6efe5de1cc9236017e003b1fc37"
+		hash1 = "a28b22acf2358e6aced43a6260af9170"
+		hash2 = "6f506d7adfcc2288631ed2da37b0db04"
+		hash3 = "8aebade47dc1aa9ac4b5625acf5ade8f"
+
+	strings:
+
+		$string0 = "msn.klm"
+		$string1 = "wmsn.klm"
+		$string2 = "bms.klm"
+
+	condition:
+
+		all of them
+}
+
 ]==]
 -- #endregion
-
-----------------------------------------------------
--- SECTION 2: Functions
-
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
@@ -2167,39 +4702,45 @@ yara_suspicious:add_rule(suspicious_rules)
 yara_info = hunt.yara.new()
 yara_info:add_rule(info_rules)
 
--- All OS-specific instructions should be behind an 'if' statement
-if hunt.env.is_windows() then
-  -- Insert your Windows code
-    paths = { 'c:\\windows\\system32\\calc.exe', 'c:\\windows\\system32\\notepad.exe' }
-
-elseif hunt.env.is_macos() then
-    -- Insert your MacOS Code
-    paths = { '/bin/sh', 'bin/ls' }
-
-elseif hunt.env.is_linux() or hunt.env.has_sh() then
-    -- Insert your POSIX (linux) Code
-    paths = { '/bin/cat', 'bin/tar' }
-
-else
-    hunt.warn("WARNING: Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+-- Get list of processes
+paths = {}
+procs = hunt.process.list()
+for i, proc in pairs(procs) do
+    hunt.debug("Adding processpath["..i.."]: " .. proc:path())
+    paths[proc:path()] = true
 end
 
+-- Add additional paths
+for i, path in pairs(additionalpaths) do
+    hunt.debug("Adding additionalpath["..i.."]: " .. path)
+    paths[path] = true
+end
 
 -- Scan all paths with Yara signatures
-for i, path in ipairs(paths) do
+for path, i in pairs(paths) do
     print('[i] Scanning ' .. path)
     for _, signature in pairs(yara_bad:scan(path)) do
-        hunt.log('[BAD] Yara matched [' .. signature .. '] in file: ' .. path)
+        if not hash then
+            hash = hunt.hash.sha1(path)
+        end
+        hunt.log('[BAD] Yara matched [' .. signature .. '] in file: ' .. path .. " <"..hash..">")
         bad = true
     end
     for _, signature in pairs(yara_suspicious:scan(path)) do
-        hunt.log('[SUSPICIOUS] Yara matched [' .. signature .. '] in file: ' .. path)
+        if not hash then
+            hash = hunt.hash.sha1(path)
+        end
+        hunt.log('[SUSPICIOUS] Yara matched [' .. signature .. '] in file: ' .. path .. " <"..hash..">")
         suspicious = true
     end
     for _, signature in pairs(yara_info:scan(path)) do
-        hunt.log('[INFO] Yara matched [' .. signature .. '] in file: ' .. path)
+        if not hash then
+            hash = hunt.hash.sha1(path)
+        end
+        hunt.log('[INFO] Yara matched [' .. signature .. '] in file: ' .. path .. " <"..hash..">")
         lowrisk = true
     end
+    hash = nil
 end
 
 
