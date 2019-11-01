@@ -10,24 +10,28 @@
 
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
-OS = hunt.env.os() -- determine host OS
-myinstance = hunt.net.api() -- "alpo1.infocyte.com"
-infocyteips = hunt.net.api_ipv4()
-workingfolder = os.getenv("TEMP")
-computername = os.getenv("COMPUTERNAME")
+
+whitelisted_ips = {
+	"192.168.1.1",
+	"192.167.1.2"
+}
+
 
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
 
 
 ----------------------------------------------------
 -- SECTION 3: Actions
-----------------------------------------------------
+
+host_info = hunt.env.host_info()
+os = host_info:os()
+hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+
+whitelist = hunt.net.api_ipv4()
+table.insert(whitelist, whitelisted_ips)
 
 -- TO DO: Check for Agent and install if not present
 -- agent will be the only thing able to communicate out
@@ -38,7 +42,8 @@ else
 	-- Install Infocyte Agent
 	if string.find(OS, "xp") then
 		-- TO DO: XP
-	elseif string.find(OS, "windows") then
+	elseif hunt.env.is_windows() and hunt.env.has_powershell() then
+	  -- Insert your Windows code
 		psagentdeploycmd = [[
 		& { [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12;
 		(new-object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Infocyte/PowershellTools/master/AgentDeployment/install_huntagent.ps1') |
@@ -49,32 +54,39 @@ else
 			hunt.log("Powershell agent install script failed to run. [Error: "..result.."]")
 			exit()
 		end
-	elseif string.find(OS, "osx") or string.find(OS, "bsd") then
-		-- TO DO: OS
+	elseif hunt.env.is_macos() then
+	    -- Insert your MacOS Code
+
+	elseif hunt.env.is_linux() or hunt.env.has_sh() then
+	    -- Insert your POSIX (linux) Code
+
 	else
-		-- TO DO: Assume linux OS
+	    hunt.warn("WARNING: Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+		return
 	end
 end
 
 if string.find(OS, "windows xp") then
 	-- TO DO: XP's netsh
-elseif string.find(OS, "windows") then
+elseif hunt.env.is_windows() then
 	os.execute("mkdir " .. workingfolder)
 	os.execute("netsh advfirewall export " .. workingfolder .. "\\fwbackup.wfw")
 	os.execute("netsh advfirewall firewall set rule all NEW enable=no")
 	os.execute("netsh advfirewall firewall add rule name='Infocyte Host Isolation' dir=in action=allow protocol=ANY remoteip=" .. infocyteips)
 	os.execute("netsh advfirewall reset")
-elseif string.find(OS, "linux") then
-	-- TO DO: IPTables
-elseif string.find(OS, "osx") or string.find(OS, "bsd") then
+
+elseif hunt.env.is_macos() then
 	-- TO DO: ipfw (old) or pf (10.6+)
-else
+
+elseif  hunt.env.has_sh() then
 	-- Assume linux-type OS and iptables
 	-- TO DO: IPTables
+
 end
 
 
 ----------------------------------------------------
 -- SECTION 4: Output
-----------------------------------------------------
 log("Host has been isolated to " .. infocyteips)
+
+----------------------------------------------------

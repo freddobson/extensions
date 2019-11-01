@@ -9,9 +9,7 @@
     Updated: 20191018 (Gerritz)
 ]]--
 
-----------------------------------------------------
 -- SECTION 1: Inputs (Variables)
-----------------------------------------------------
 aws_key_id = ''
 s3_secret = ''
 s3_region = 'us-east-2' -- US East (Ohio)
@@ -24,7 +22,7 @@ Get-ItemProperty HKLM:\SYSTEM\CurrentControlSet\services\eventlog\Security | sel
 Get-ItemProperty HKLM:\SYSTEM\CurrentControlSet\services\eventlog\System | select File
 
     4624 [Security] - Successful Logon (Network Type 3 Logon)
-	4720 [Security] - A user account was created
+    4720 [Security] - A user account was created
     4732/4728 [Security] - A member was added to a security-enabled group
     7045 [System] - Service Creation
     4688 [Security] - A new process has been created (Win2012R2+ has CLI)
@@ -37,8 +35,6 @@ https://www.exabeam.com/siem-guide/siem-concepts/event-log/
 
 ----------------------------------------------------
 -- SECTION 2: Functions
-----------------------------------------------------
-
 
 -- You can define shell scripts here if using any.
 initscript = [==[
@@ -54,7 +50,6 @@ function get-logs ($outpath="C:\windows\temp\logs.7z") {
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
-----------------------------------------------------
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
@@ -67,7 +62,7 @@ hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Doma
 if hunt.env.is_windows() and hunt.env.has_powershell() then
   -- Insert your Windows code
 
-  result = "Test" -- filler [DELETE ME]
+  LogPath = [[C:\Windows\System32\winevt\Logs\Security.evtx]]
 
 elseif hunt.env.is_macos() then
     -- Insert your MacOS Code
@@ -90,7 +85,6 @@ end
 --
 --  In addition, one or more log statements can be used to send data in text
 --   format.
-----------------------------------------------------
 
 
 -- Set the returned threat status of the host based on the extension results
@@ -105,3 +99,5 @@ end
 -- one or more log statements can be used to send resulting data or messages in
 -- text format to your Infocyte instance
 hunt.log("Result: Extension successfully executed on " .. hostname)
+
+----------------------------------------------------
