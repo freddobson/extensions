@@ -67,3 +67,5 @@ end
 ----------------------------------------------------
 -- SECTION 4: Output
 log("Memory dump completed. Evidence uploaded to "..destination)
+
+----------------------------------------------------

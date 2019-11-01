@@ -45,3 +45,5 @@ end
 -- SECTION 4: Output
 
 hunt.log([[ Volume Shadow Copy has been mounted to C:\vssbackup\ ]])
+
+----------------------------------------------------

@@ -2217,3 +2217,5 @@ else
 end
 
 hunt.verbose("Result: Extension successfully executed on " .. host_info:hostname())
+
+----------------------------------------------------

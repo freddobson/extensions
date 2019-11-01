@@ -41,3 +41,5 @@ end
 ----------------------------------------------------
 -- SECTION 4: Output
 log("Host has been restored and is no longer isolated")
+
+----------------------------------------------------

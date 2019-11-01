@@ -59,3 +59,5 @@ end
 -- text format to your Infocyte instance
 
 hunt.log("Result: Extension successfully executed on " .. hostname)
+
+----------------------------------------------------

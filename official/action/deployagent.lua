@@ -82,3 +82,5 @@ end
 -- SECTION 4: Output
 
 hunt.log("Infocyte Agent has been installed successfully")
+
+----------------------------------------------------
