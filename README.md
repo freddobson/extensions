@@ -371,6 +371,65 @@ end
 | **add_rule(rule: string)** | Add a rule to the yara instance. Once a scan is executed, no more rules can be added. |
 | **scan(path: string)** | Scan a file at `path`, returns a list of the rules matched. |
 
+#### Survey API
+```lua
+-- Create a new autostart 
+a = hunt.survey.autostart()
+
+-- Add the location of the executed file
+a:exe("/home/user/.zDj289d/.tmp.sh")
+-- Add optional parameter information
+a:params("--listen 1337")
+-- Custom 'autostart kind'
+a:kind("Bash Config")
+-- Where the reference was found
+a:location("/home/user/.bashrc")
+
+-- Add this information to the collection
+hunt.survey.add(a)
+```
+
+```lua
+-- Create a new artifact 
+a = hunt.survey.artifact()
+
+-- Add the location of the executed file
+a:exe("/usr/local/bin/nc")
+-- Add optional parameter information
+a:params("-l -p 1337")
+-- Custom 'autostart kind'
+a:kind("Log File Entry")
+-- Executed on
+a:executed("2019-05-01 11:23:00")
+-- Modified on
+a:modified("2018-01-01 01:00:00")
+
+-- Add this information to the collection
+hunt.survey.add(a)
+```
+
+| Function | Description |
+| --- | --- |
+| **hunt.survey.autostart()** | Create an object to be added to the `autostart` collection |
+| **hunt.survey.artifact()** | Create an object to be added to the `artifact` collection |
+
+##### Autostarts
+| Function | Description |
+| --- | --- |
+| **artifact:exe(string)** | Sets the path to the executed file |
+| **artifact:params(string)** | Sets the parameters of executed file |
+| **artifact:kind(string)** | Sets the custom *kind* of artifact |
+| **artifact:location(string)** | Where the autostart was located (config file, registry path, etc) |
+
+##### Artifacts
+| Function | Description |
+| --- | --- |
+| **artifact:exe(string)** | Sets the path to the executed file |
+| **artifact:params(string)** | Sets the parameters of executed file |
+| **artifact:kind(string)** | Sets the custom *kind* of artifact |
+| **artifact:executed(string)** | Sets *executed on* metadata, must be `2019-11-30 12:11:10` format |
+| **artifact:modified(string)** | Sets *modified on* metadata, must be `2019-11-30 12:11:10` format |
+
 #### Extras
 
 **base64 a string**
