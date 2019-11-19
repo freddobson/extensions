@@ -157,12 +157,11 @@ files = hunt.fs.ls('/usr/', opts)
 -- the file object has some useful properties
 file:full() -- returns the full path to the file
 file:path() -- returns the path relative to the ls() 
-file:full() -- returns the name of the file
+file:name() -- returns the name of the file
 file:size() -- returns the size of the file in bytes
 file:is_dir() -- returns if the item is a directory
 file:is_file() -- returns if the item is a non-directory file 
 ```
-
 
 #### Network
 
@@ -370,6 +369,65 @@ end
 | **hunt.yara.new()** | New yara instance. |
 | **add_rule(rule: string)** | Add a rule to the yara instance. Once a scan is executed, no more rules can be added. |
 | **scan(path: string)** | Scan a file at `path`, returns a list of the rules matched. |
+
+#### Survey API
+```lua
+-- Create a new autostart 
+a = hunt.survey.autostart()
+
+-- Add the location of the executed file
+a:exe("/home/user/.zDj289d/.tmp.sh")
+-- Add optional parameter information
+a:params("--listen 1337")
+-- Custom 'autostart type'
+a:type("Bash Config")
+-- Where the reference was found
+a:location("/home/user/.bashrc")
+
+-- Add this information to the collection
+hunt.survey.add(a)
+```
+
+```lua
+-- Create a new artifact 
+a = hunt.survey.artifact()
+
+-- Add the location of the executed file
+a:exe("/usr/local/bin/nc")
+-- Add optional parameter information
+a:params("-l -p 1337")
+-- Custom 'autostart type'
+a:type("Log File Entry")
+-- Executed on
+a:executed("2019-05-01 11:23:00")
+-- Modified on
+a:modified("2018-01-01 01:00:00")
+
+-- Add this information to the collection
+hunt.survey.add(a)
+```
+
+| Function | Description |
+| --- | --- |
+| **hunt.survey.autostart()** | Create an object to be added to the `autostart` collection |
+| **hunt.survey.artifact()** | Create an object to be added to the `artifact` collection |
+
+##### Autostarts
+| Function | Description |
+| --- | --- |
+| **artifact:exe(string)** | Sets the path to the executed file [REQUIRED] |
+| **artifact:params(string)** | Sets the parameters of executed file |
+| **artifact:type(string)** | Sets the custom *type* of artifact |
+| **artifact:location(string)** | Where the autostart was located (config file, registry path, etc) [REQUIRED] |
+
+##### Artifacts
+| Function | Description |
+| --- | --- |
+| **artifact:exe(string)** | Sets the path to the executed file [REQUIRED] |
+| **artifact:params(string)** | Sets the parameters of executed file |
+| **artifact:type(string)** | Sets the custom *type* of artifact |
+| **artifact:executed(string)** | Sets *executed on* metadata, must be `2019-11-30 12:11:10` format |
+| **artifact:modified(string)** | Sets *modified on* metadata, must be `2019-11-30 12:11:10` format |
 
 #### Extras
 
