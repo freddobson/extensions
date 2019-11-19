@@ -157,12 +157,11 @@ files = hunt.fs.ls('/usr/', opts)
 -- the file object has some useful properties
 file:full() -- returns the full path to the file
 file:path() -- returns the path relative to the ls() 
-file:full() -- returns the name of the file
+file:name() -- returns the name of the file
 file:size() -- returns the size of the file in bytes
 file:is_dir() -- returns if the item is a directory
 file:is_file() -- returns if the item is a non-directory file 
 ```
-
 
 #### Network
 
@@ -380,8 +379,8 @@ a = hunt.survey.autostart()
 a:exe("/home/user/.zDj289d/.tmp.sh")
 -- Add optional parameter information
 a:params("--listen 1337")
--- Custom 'autostart kind'
-a:kind("Bash Config")
+-- Custom 'autostart type'
+a:type("Bash Config")
 -- Where the reference was found
 a:location("/home/user/.bashrc")
 
@@ -397,8 +396,8 @@ a = hunt.survey.artifact()
 a:exe("/usr/local/bin/nc")
 -- Add optional parameter information
 a:params("-l -p 1337")
--- Custom 'autostart kind'
-a:kind("Log File Entry")
+-- Custom 'autostart type'
+a:type("Log File Entry")
 -- Executed on
 a:executed("2019-05-01 11:23:00")
 -- Modified on
@@ -416,17 +415,17 @@ hunt.survey.add(a)
 ##### Autostarts
 | Function | Description |
 | --- | --- |
-| **artifact:exe(string)** | Sets the path to the executed file |
+| **artifact:exe(string)** | Sets the path to the executed file [REQUIRED] |
 | **artifact:params(string)** | Sets the parameters of executed file |
-| **artifact:kind(string)** | Sets the custom *kind* of artifact |
-| **artifact:location(string)** | Where the autostart was located (config file, registry path, etc) |
+| **artifact:type(string)** | Sets the custom *type* of artifact |
+| **artifact:location(string)** | Where the autostart was located (config file, registry path, etc) [REQUIRED] |
 
 ##### Artifacts
 | Function | Description |
 | --- | --- |
-| **artifact:exe(string)** | Sets the path to the executed file |
+| **artifact:exe(string)** | Sets the path to the executed file [REQUIRED] |
 | **artifact:params(string)** | Sets the parameters of executed file |
-| **artifact:kind(string)** | Sets the custom *kind* of artifact |
+| **artifact:type(string)** | Sets the custom *type* of artifact |
 | **artifact:executed(string)** | Sets *executed on* metadata, must be `2019-11-30 12:11:10` format |
 | **artifact:modified(string)** | Sets *modified on* metadata, must be `2019-11-30 12:11:10` format |
 
