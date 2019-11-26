@@ -21,12 +21,13 @@ initscript = [==[
 
 ]==]
 
+
 ----------------------------------------------------
 -- SECTION 3: Actions
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
-os = host_info:os()
+osversion = host_info:os()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
@@ -36,7 +37,7 @@ if hunt.env.is_windows() then
 
     --[[
     local pipe = io.popen("powershell.exe -noexit -nologo -nop -command -", "w")
-    pipe:write(script) -- load up powershell functions and vars
+    pipe:write(initscript) -- load up powershell functions and vars
     pipe:write("Get-Process")
     r = pipe:close()
     ]]--
@@ -53,11 +54,6 @@ else
     hunt.warn("WARNING: Not a compatible operating system for this extension [" .. host_info:os() .. "]")
 end
 
-----------------------------------------------------
--- SECTION 4: Results
 -- one or more log statements can be used to send resulting data or messages in
 -- text format to your Infocyte instance
-
 hunt.log("Result: Extension successfully executed on " .. hostname)
-
-----------------------------------------------------

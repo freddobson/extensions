@@ -10,7 +10,8 @@
 ]]--
 
 -- SECTION 1: Inputs (Variables)
-
+backup_location = "C:\\fwbackup.wfw"
+iptables_bkup = "/opt/iptables-bkup"
 
 ----------------------------------------------------
 -- SECTION 2: Functions
@@ -21,25 +22,29 @@
 -- SECTION 3: Actions
 
 host_info = hunt.env.host_info()
-os = host_info:os()
+osversion = host_info:os()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
-if string.find(OS, "windows xp") then
-	-- TO DO
-elseif string.find(OS, "windows") then
-	os.execute("netsh advfirewall firewall delete rule name='Infocyte Host Isolation'")
-	os.execute("netsh advfirewall import " .. workingfolder .. "\\fwbackup.wfw")
-	os.execute("netsh advfirewall reset")
-elseif string.find(OS, "osx") or string.find(OS, "") then
-	-- TO DO: ifw
-else
+if string.find(osversion, "windows xp") then
+	-- TO DO: XP's netsh firewall
+
+elseif hunt.env.is_windows() then
+	-- os.execute("netsh advfirewall firewall delete rule name='Infocyte Host Isolation (infocyte)'")
+	os.execute("netsh advfirewall import " .. backup_location)
+	os.remove(backup_location)
+	-- os.execute("netsh advfirewall reset")
+
+elseif hunt.env.is_macos() then
+	-- TO DO: ipfw (old) or pf (10.6+)
+
+elseif  hunt.env.has_sh() then
 	-- Assume linux-type OS and iptables
-	-- TO DO: IPTables
+	hunt.log("Restoring iptables from backup")
+	handle = assert(io.popen('iptables-restore < '..iptables_bkup, 'r'))
+	output = assert(handle:read('*a'))
+	handle:close()
+	os.remove(iptables_bkup)
 end
 
-----------------------------------------------------
--- SECTION 4: Output
 log("Host has been restored and is no longer isolated")
-
-----------------------------------------------------

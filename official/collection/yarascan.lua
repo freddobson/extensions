@@ -10,25 +10,28 @@
 
 -- SECTION 1: Inputs (Variables)
 
+-- This extension will yara scan files below
+scanactiveprocesses = true
+scanappdata = false
 
--- This extension will yara scan running processes.
 -- Provide additional paths below
 if hunt.env.is_windows() then
     additionalpaths = {
         'c:\\windows\\system32\\calc.exe',
-        'c:\\windows\\system32\\notepad.exe'
+        'c:\\windows\\system32\\notepad.exe',
+        "c:\\windows\\"
     }
 
 elseif hunt.env.is_macos() then
     additionalpaths = {
         '/bin/sh',
-        'bin/ls'
+        '/bin/ls'
     }
 
 elseif hunt.env.is_linux() then
     additionalpaths = {
         '/bin/cat',
-        'bin/tar'
+        '/bin/tar'
     }
 
 end
@@ -4652,12 +4655,47 @@ rule EmiratesStatement
 ]==]
 -- #endregion
 
+function GetFileName(path)
+  return path:match("^.+/(.+)$")
+end
+
+function GetFileExtension(path)
+  return path:match("^.+(%..+)$")
+end
+
+function is_executable(path)
+    magicnumbers = {
+        "MZ",
+        ".ELF"
+    }
+    local f,msg = io.open(path, "rb")
+    if not f then
+        hunt.debug(msg)
+        return nil
+    end
+    local bytes = f:read(4)
+    if bytes then
+        -- print(bytes)
+        for _,n in pairs(magicnumbers) do
+            magicheader = string.find(bytes, n)
+            if magicheader then
+                -- print(string.byte(magicheader))
+                f:close()
+                return true
+            end
+        end
+        f:close()
+        return false
+    end
+end
+
+
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
-os = host_info:os()
+osversion = host_info:os()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
@@ -4671,18 +4709,47 @@ yara_suspicious:add_rule(suspicious_rules)
 yara_info = hunt.yara.new()
 yara_info:add_rule(info_rules)
 
--- Get list of processes
+
+-- Add active processes
 paths = {}
-procs = hunt.process.list()
-for i, proc in pairs(procs) do
-    hunt.debug("Adding processpath["..i.."]: " .. proc:path())
-    paths[proc:path()] = true
+if scanactiveprocesses then
+    procs = hunt.process.list()
+    for i, proc in pairs(procs) do
+        --hunt.debug("Adding processpath["..i.."]: " .. proc:path())
+        paths[proc:path()] = true
+    end
+end
+
+-- Add appdata paths
+if scanappdata then
+    for _, userfolder in pairs(hunt.fs.ls("C:\\Users", {"dirs"})) do
+        opts = {
+            "files",
+            "size<1mb",
+            "recurse=1" --depth of 1
+        }
+        for _, path in pairs(hunt.fs.ls(userfolder:path().."\\appdata\\roaming", opts)) do
+            if is_executable(path:path()) then
+                paths[path:path()] = true
+            end
+        end
+    end
 end
 
 -- Add additional paths
 for i, path in pairs(additionalpaths) do
-    hunt.debug("Adding additionalpath["..i.."]: " .. path)
-    paths[path] = true
+    files = hunt.fs.ls(path)
+    if type(files) == "table" then
+        for _,path in pairs(files) do
+            if is_executable(path:name()) then
+                paths[path:name()] = true
+            end
+        end
+    else
+        if is_executable(path:name()) then
+            paths[files:name()] = true
+        end
+    end
 end
 
 -- Scan all paths with Yara signatures
@@ -4713,17 +4780,14 @@ for path, i in pairs(paths) do
 end
 
 
-----------------------------------------------------
--- SECTION 4: Results
-
 if bad then
-    hunt.bad()
+    hunt.status.bad()
 elseif suspicious then
-    hunt.suspicious()
+    hunt.status.suspicious()
 elseif lowrisk then
-    hunt.lowrisk()
+    hunt.status.lowrisk()
 else
-    hunt.good()
+    hunt.status.good()
 end
 
 hunt.verbose("Result: Extension successfully executed on " .. host_info:hostname())

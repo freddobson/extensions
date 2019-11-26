@@ -17,11 +17,7 @@
 
 
 -- You can define shell scripts here if using any.
-ps_script = [==[
-
-]==]
-
-python_cmd = [==[
+script = [==[
 
 ]==]
 
@@ -30,7 +26,7 @@ python_cmd = [==[
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
-os = host_info:os()
+osversion = host_info:os()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
@@ -40,9 +36,10 @@ if hunt.env.is_windows() then
   -- Insert your Windows code
 
   -- Create powershell process and feed script/commands to its stdin
-  -- local pipe = io.popen("powershell.exe -noexit -nologo -nop -command -", "w")
-  -- pipe:write(initscript) -- load up powershell functions and vars
-  -- pipe:write('Get-StringsMatch -Temppath ' .. tempfile .. ' -Path ' .. searchpath .. ' -Strings ' .. make_psstringarray(strings))
+  -- pipe = io.popen("powershell.exe -noexit -nologo -nop -command -", "w")
+  -- cmd = 'Get-Process | export-CSV C:\\processlist.csv'
+  -- scriptcmd = script .. '\ncmd'
+  -- pipe:write(scriptcmd) -- load up powershell functions and vars
   -- r = pipe:close()
 
 elseif hunt.env.is_macos() then
@@ -52,21 +49,12 @@ elseif hunt.env.is_macos() then
 elseif hunt.env.is_linux() or hunt.env.has_sh() then
     -- Insert your POSIX (linux) Code
 
-    -- os.execute("python -u -c \"" .. python_script.. "\"" )
+    -- os.execute("python -u -c \"" .. cmd.. "\"" )
 
 else
-    hunt.warn("WARNING: Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    hunt.warn("Not a compatible operating system for this extension [" .. host_info:os() .. "]")
 end
 
-
-
-----------------------------------------------------
--- SECTION 4: Results
---  Threat status is a set of static results used to aggregate and stack
---  results:
---      Good, Low Risk, Unknown, Suspicious, or Bad
---    Include any host-side processing and analysis necessary to report the
---   appropriate status.
 
 result = "Test" -- filler [DELETE ME]
 
@@ -82,5 +70,3 @@ end
 -- one or more log statements can be used to send resulting data or messages in
 -- text format to your Infocyte instance
 hunt.log("Result: Extension successfully executed on " .. hostname)
-
-----------------------------------------------------
