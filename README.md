@@ -80,6 +80,7 @@ by Infocyte. This API can be broken down into various parts:
 - [Registry](#registry)
 - [Hashing](#hashing)
 - [Recovery](#recovery)
+- [Analysis](#Analysis)
 - [Yara](#yara)
 - [Status](#status)
 - [Extras](#extras)
@@ -345,33 +346,8 @@ recovery.upload_file('c:\\windows\\system32\\notepad.exe', 'evidence.bin')
 | **hunt.recovery.s3(access_key_id: string, secret_access_key: string, region: string, bucket: string)** | S3 recovery client. |
 | **upload_file(local: string, remote: string)** | Upload a local file to remote path |
 
-#### Yara
-```lua
-rule = [[
-rule is_malware {
 
-  strings:
-    $flag = "IAmMalware"
-
-  condition:
-    $flag
-}
-]]
-
-yara = hunt.yara.new()
-yara:add_rule(rule)
-for _, signature in pairs(yara:scan("c:\\malware\\lives\\here\\bad.exe")) do
-    hunt.log("Found " .. signature .. " in file!")
-end
-```
-
-| Function | Description |
-| --- | --- |
-| **hunt.yara.new()** | New yara instance. |
-| **add_rule(rule: string)** | Add a rule to the yara instance. Once a scan is executed, no more rules can be added. |
-| **scan(path: string)** | Scan a file at `path`, returns a list of the rules matched. |
-
-#### Survey API
+#### Analysis
 ```lua
 -- Create a new autostart 
 a = hunt.survey.autostart()
@@ -416,10 +392,10 @@ hunt.survey.add(a)
 ##### Autostarts
 | Function | Description |
 | --- | --- |
-| **artifact:exe(string)** | Sets the path to the executed file [REQUIRED] |
-| **artifact:params(string)** | Sets the parameters of executed file |
-| **artifact:type(string)** | Sets the custom *type* of artifact |
-| **artifact:location(string)** | Where the autostart was located (config file, registry path, etc) [REQUIRED] |
+| **autostart:exe(string)** | Sets the path to the executed file [REQUIRED] |
+| **autostart:params(string)** | Sets the parameters of executed file |
+| **autostart:type(string)** | Sets the custom *type* of artifact |
+| **autostart:location(string)** | Where the autostart was located (config file, registry path, etc) [REQUIRED] |
 
 ##### Artifacts
 | Function | Description |
@@ -429,6 +405,32 @@ hunt.survey.add(a)
 | **artifact:type(string)** | Sets the custom *type* of artifact |
 | **artifact:executed(string)** | Sets *executed on* metadata, must be `2019-11-30 12:11:10` format |
 | **artifact:modified(string)** | Sets *modified on* metadata, must be `2019-11-30 12:11:10` format |
+
+##### Yara
+```lua
+rule = [[
+rule is_malware {
+
+  strings:
+    $flag = "IAmMalware"
+
+  condition:
+    $flag
+}
+]]
+
+yara = hunt.yara.new()
+yara:add_rule(rule)
+for _, signature in pairs(yara:scan("c:\\malware\\lives\\here\\bad.exe")) do
+    hunt.log("Found " .. signature .. " in file!")
+end
+```
+
+| Function | Description |
+| --- | --- |
+| **hunt.yara.new()** | New yara instance. |
+| **add_rule(rule: string)** | Add a rule to the yara instance. Once a scan is executed, no more rules can be added. |
+| **scan(path: string)** | Scan a file at `path`, returns a list of the rules matched. |
 
 #### Status
 The result of an extension can optionally carry a threat status which influences the rest
