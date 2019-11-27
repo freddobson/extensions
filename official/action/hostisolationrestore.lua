@@ -57,4 +57,4 @@ elseif  hunt.env.has_sh() then
 	end
 end
 
-log("Host has been restored and is no longer isolated")
+hunt.log("Host has been restored and is no longer isolated")
