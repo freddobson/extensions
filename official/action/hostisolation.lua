@@ -145,7 +145,8 @@ if string.find(osversion, "windows xp") then
 
 elseif hunt.env.is_windows() then
 	-- Backup:
-    if hunt.fs.ls(backup_location) then
+    backup = hunt.fs.ls(backup_location)
+    if #backup > 0 then
         hunt.log("System is already isolated.")
         return
     end
@@ -168,7 +169,8 @@ elseif  hunt.env.has_sh() then
 	-- Assume linux-type OS and iptables
 
 	--backup existing IP Tables Configuration
-    if hunt.fs.ls(iptables_bkup) then
+    backup = hunt.fs.ls(iptables_bkup)
+    if #backup > 0 then
         hunt.log("System is already isolated.")
         return
     end

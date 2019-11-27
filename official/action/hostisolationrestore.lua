@@ -30,21 +30,31 @@ if string.find(osversion, "windows xp") then
 	-- TO DO: XP's netsh firewall
 
 elseif hunt.env.is_windows() then
-	-- os.execute("netsh advfirewall firewall delete rule name='Infocyte Host Isolation (infocyte)'")
-	os.execute("netsh advfirewall import " .. backup_location)
-	os.remove(backup_location)
-	-- os.execute("netsh advfirewall reset")
+	backup = hunt.fs.ls(backup_location)
+	if #backup > 0 then
+		-- os.execute("netsh advfirewall firewall delete rule name='Infocyte Host Isolation (infocyte)'")
+		os.execute("netsh advfirewall import " .. backup_location)
+		os.remove(backup_location)
+		-- os.execute("netsh advfirewall reset")
+	else
+		hunt.error("Host has no backup. Cannot be restored (it may not have been isolated).")
+	end
 
 elseif hunt.env.is_macos() then
 	-- TO DO: ipfw (old) or pf (10.6+)
 
 elseif  hunt.env.has_sh() then
 	-- Assume linux-type OS and iptables
-	hunt.log("Restoring iptables from backup")
-	handle = assert(io.popen('iptables-restore < '..iptables_bkup, 'r'))
-	output = assert(handle:read('*a'))
-	handle:close()
-	os.remove(iptables_bkup)
+	backup = hunt.fs.ls(iptables_bkup)
+	if #backup > 0 then
+		hunt.log("Restoring iptables from backup")
+		handle = assert(io.popen('iptables-restore < '..iptables_bkup, 'r'))
+		output = assert(handle:read('*a'))
+		handle:close()
+		os.remove(iptables_bkup)
+	else
+		hunt.error("Host has no backup. Cannot be restored (it may not have been isolated).")
+	end
 end
 
 log("Host has been restored and is no longer isolated")
