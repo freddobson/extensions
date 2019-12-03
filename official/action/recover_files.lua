@@ -50,12 +50,6 @@ else
     }
 end
 
--- Check required inputs
-if not s3_region or not s3_bucket then
-    hunt.error("s3_region and s3_bucket not set")
-    return
-end
-
 
 ----------------------------------------------------
 -- SECTION 2: Functions
@@ -105,6 +99,12 @@ end
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
 
+-- Check required inputs
+if not s3_region or not s3_bucket then
+    hunt.error("s3_region and s3_bucket not set")
+    return
+end
+
 host_info = hunt.env.host_info()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
@@ -124,7 +124,7 @@ for _, p in pairs(paths) do
         if not infile and use_powerforensics and hunt.env.has_powershell() then
             -- Assume file locked by kernel, use powerforensics to copy
             cmd = 'Copy-ForensicFile -Path '..path:path()..' -Destination '..outpath
-            hunt.verbose("File Locked. Executing: "..cmd)
+            hunt.debug("File Locked. Executing: "..cmd)
             local pipe = io.popen('powershell.exe -nologo -nop -command "'..cmd..'"', 'r')
             hunt.debug(pipe:read('*a')) -- load up powershell functions and vars
             pipe:close()
@@ -147,8 +147,13 @@ for _, p in pairs(paths) do
             link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path
 
             -- Upload to S3
-            s3:upload_file(outpath, s3path)
-            hunt.log("Uploaded "..path:path().." (sha1=".. hash .. ") to S3 at "..link)
+            success, err = s3:upload_file(outpath, s3path)
+            if success then
+                hunt.log("Uploaded "..path:path().." (sha1=".. hash .. ") to S3 at "..link)
+            else
+                hunt.error("Error on s3 upload of "..path:path()..": "..err)
+            end
+
             os.remove(outpath)
         else
             hunt.error("File read/copy failed on "..path:path())

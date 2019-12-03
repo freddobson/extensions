@@ -27,11 +27,6 @@ s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
 s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname().."/evidence" -- /filename will be appended
 
--- Check required inputs
-if not s3_region or not s3_bucket then
-    hunt.error("s3_region and s3_bucket not set")
-    return
-end
 
 ----------------------------------------------------
 -- SECTION 2: Functions
@@ -80,6 +75,12 @@ end
 
 ----------------------------------------------------
 -- SECTION 3: Collection / Inspection
+
+-- Check required inputs
+if not s3_region or not s3_bucket then
+    hunt.error("s3_region and s3_bucket not set")
+    return
+end
 
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 

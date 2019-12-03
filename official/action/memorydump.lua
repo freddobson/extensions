@@ -33,15 +33,12 @@ s3_user = nil
 s3_pass = nil
 s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
-proxy = nil -- "myuser:password@10.11.12.88:8888"
-hash_image = false -- set to true if you need the sha1 of the memory image
 s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname()..'/memory' -- /filename will be appended
 
--- Check required inputs
-if not s3_region or not s3_bucket then
-    hunt.error("s3_region and s3_bucket not set")
-    return
-end
+proxy = nil -- "myuser:password@10.11.12.88:8888"
+
+hash_image = false -- set to true if you need the sha1 of the memory image
+
 
 ----------------------------------------------------
 -- SECTION 2: Functions
@@ -49,6 +46,13 @@ end
 
 ----------------------------------------------------
 -- SECTION 3: Actions
+
+-- Check required inputs
+if not s3_region or not s3_bucket then
+    hunt.error("s3_region and s3_bucket not set")
+    return
+end
+
 
 host_info = hunt.env.host_info()
 hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
