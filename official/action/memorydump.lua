@@ -21,9 +21,9 @@ date = os.date("%Y%m%d")
 instance = hunt.net.api()
 if instance == '' then
     instancename = 'offline'
-elseif instance:match("http") then
+elseif instance:match("infocyte") then
     -- get instancename
-    instancename = instance:match(".+//(.+).infocyte.com")
+    instancename = instance:match("(.+).infocyte.com")
 end
 
 -- SECTION 1: Inputs (Variables)
