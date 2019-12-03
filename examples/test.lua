@@ -114,7 +114,7 @@ hunt.log("Reverse Lookup: " .. table.tostring(hunt.net.nslookup("8.8.8.8")))
 
 -- Test Process functions
 procs = hunt.process.list()
-hunt.log("ProcessList: " .. table.tostring(procs))
+hunt.log("ProcessList: ")
 n = 0
 for _, proc in pairs(procs) do
     if n == 3 then break end
@@ -131,7 +131,8 @@ hunt.process.kill_process('Calculator.exe')
 
 -- Test Registry functions
 regkey = '\\Registry\\User'
-r = hunt.registry.list_keys(regkey)
+r,err = hunt.registry.list_keys(regkey)
+print("err: "..tostring(err))
 hunt.log("Registry: " .. table.tostring(r))
 
 for name,value in pairs(hunt.registry.list_values(regkey)) do
@@ -157,21 +158,30 @@ for _, signature in pairs(yara:scan(path)) do
 end
 
 -- Test Base64 and Hashing functions
-hunt.log("SHA1 file: " .. tostring(hunt.hash.sha1(path)))
+hash, err = hunt.hash.sha1(path)
+if not hash then
+    print("err: "..err)
+end
+hunt.log("SHA1 file ("..path.."): " .. tostring(hash))
+hash, err = hunt.hash.sha1("err.exe")
+if not hash then
+    hunt.log("SHA1 wrong file (error: "..err.."): " .. tostring(hash))
+end
 data = hunt.unbase64("dGVzdA==")
--- t = hunt.hash.sha1_data(data)
--- hunt.log("Sha1 data: " .. tostring(t))
+t, err = hunt.hash.sha1_data(data)
+print("err: "..tostring(err))
+hunt.log("Sha1 data: " .. tostring(t))
 hunt.log('unbase64 ("test"): ' .. tostring(hunt.bytes_to_string(hunt.unbase64("dGVzdA=="))))
 
 -- Test Recovery Upload Options
 file = 'c:\\windows\\system32\\notepad.exe'
 temppath = os.getenv("TEMP") .. '\\test1234.zip'
-hunt.gzip(file, temppath)
-if  fs.exists(temppath) then hunt.log("Zip Succeeded") else hunt.log('Zip Failed') end
+print(hunt.gzip(file, temppath))
+if fs.exists(temppath) then hunt.log("Zip Succeeded") else hunt.log('Zip Failed') end
 
 s3 = hunt.recovery.s3(aws_id, aws_secret, s3_region, s3_bucket)
 hunt.log('Uploading ' .. temppath .. ' to S3 Bucket [' ..s3_region .. ':' .. s3_bucket .. ']' )
-s3:upload_file(temppath, 'snarf/evidence.bin')
+print(s3:upload_file(temppath, 'snarf/evidence.bin'))
 
 -- Test Filesystem Functions
 opts = {
@@ -189,7 +199,7 @@ end
 
 -- Test status Functions
 hunt.status.good()
---hunt.status.lowrisk()
+-- hunt.status.lowrisk()
 hunt.status.bad()
 hunt.status.suspicious()
 
@@ -210,15 +220,22 @@ hunt.survey.add(a)
 
 -- Create a new artifact
 a = hunt.survey.artifact()
--- Add the location of the executed file
-a:exe("/usr/local/bin/nc")
--- Add optional parameter information
-a:params("-l -p 1337")
--- Custom 'autostart type'
+a:exe('C:\\windows\\system32\\notepad.exe')
+a:params("--listen 1337")
 a:type("Log File Entry")
--- Executed on
+a:md5('afaf2cdf9981342c494b28630608f74a')
+a:sha1('1a4e2c3bbc095cb7d9b85cabe2aea2c9a769b480')
+a:sha256('2190f181fe3c821e2d3fa8a09832fe56f36a25b8825af61c2eea7ae4fc2afa55')
+hunt.survey.add(a)
+
+-- Create a new artifact
+a = hunt.survey.artifact()
+a:exe("/usr/local/bin/nc")
+a:params("-l -p 1337")
+a:type("Log File Entry")
 a:executed("2019-05-01 11:23:00")
--- Modified on
 a:modified("2018-01-01 01:00:00")
--- Add this information to the collection
+--a:md5('')
+a:sha1('1a4e2c3bbc095cb7d9b85cabe2aea2c9a769b480')
+--a:sha256('')
 hunt.survey.add(a)
