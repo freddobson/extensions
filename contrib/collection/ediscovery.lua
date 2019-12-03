@@ -266,7 +266,7 @@ Function Get-StringsMatch {
 
     If($results) {
         Write-Host "Exporting to $Temppath"
-        $results | Export-Csv -Path $Temppath -NoTypeInformation
+        $results | Export-Csv -Path $Temppath -NoTypeInformation -Delimiter "|"
         return $results
     }
 }
@@ -306,7 +306,7 @@ function parse_csv(path, sep)
         local n = 1
         local fields = {}
         for str in string.gmatch(line, "([^"..sep.."]+)") do
-            s = str:gsub('"(.+)"', "%1")
+            s = str:gsub('^"(.+)"$', "%1")
             if #header == 0 then
                 fields[n] = s
             else
@@ -425,7 +425,7 @@ else
         end
 
         -- Parse CSV output from Powershell
-        csv = parse_csv(tempfile, ',')
+        csv = parse_csv(tempfile, '|')
         if not csv then
             hunt.error("Could not parse CSV.")
             return
