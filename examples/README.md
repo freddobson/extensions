@@ -57,5 +57,5 @@ Standard output will go to the screen (including any print statements used for d
 On Windows, you can install the [Infocyte HUNT Powershell Module](https://www.powershellgallery.com/packages/InfocyteHUNTAPI) and run `Invoke-ICExtension`
 Ensure the latest copy of `s1.exe` is in `C:\Program Files\Infocyte\dev\` in order for this to run.
 
-> `Install-Module -Name InfocyteHUNTAPI`  
-> `Invoke-ICExtension -Path <pathtoextension>`
+> PS> `Install-Module -Name InfocyteHUNTAPI`  
+> PS> `Invoke-ICExtension -Path <pathtoextension>`
