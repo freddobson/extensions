@@ -1,7 +1,7 @@
 --[[
 	Infocyte Extension
 	Name: Memory Extraction
-	Type: Collection
+	Type: Action
 	Description: Uses winpmem/linpmem to dump full physical memory and
      stream it to an S3 bucket, ftp server, or smb share. If output path not
      specified, will dump to local temp folder.
@@ -17,15 +17,6 @@
 
 ]]--
 
-date = os.date("%Y%m%d")
-instance = hunt.net.api()
-if instance == '' then
-    instancename = 'offline'
-elseif instance:match("infocyte") then
-    -- get instancename
-    instancename = instance:match("(.+).infocyte.com")
-end
-
 -- SECTION 1: Inputs (Variables)
 
 -- S3 Bucket (Destination)
@@ -33,7 +24,8 @@ s3_user = nil
 s3_pass = nil
 s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
-s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname()..'/memory' -- /filename will be appended
+s3path_modifier = "memory" -- /filename will be appended
+--S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
 
 proxy = nil -- "myuser:password@10.11.12.88:8888"
 
@@ -55,10 +47,11 @@ end
 
 
 host_info = hunt.env.host_info()
-hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+osversion = host_info:os()
+hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 workingfolder = os.getenv("temp")
-mempath = workingfolder.."\\physmem"..date..".map"
+mempath = workingfolder.."\\physmem.map"
 
 if hunt.env.is_windows() then
     -- Insert your Windows code
@@ -110,7 +103,7 @@ end
 
 
 -- Dump Memory to disk
-hunt.verbose("Memory dump on "..host_info:os().." host started to local path "..mempath)
+hunt.debug("Memory dump on "..host_info:os().." host started to local path "..mempath)
 -- os.execute("winpmem.exe --output - --format map | ")    --split 1000M
 result = os.execute(pmempath.." --output "..mempath.." --format map --split 1000M")
 if not result then
@@ -126,6 +119,15 @@ if s3_user then
 else
     script = 'recovery = hunt.recovery.s3(nil, nil, "'..s3_region..'","'..s3_bucket..'")\n'
 end
+
+instance = hunt.net.api()
+if instance == '' then
+    instancename = 'offline'
+elseif instance:match("infocyte") then
+    -- get instancename
+    instancename = instance:match("(.+).infocyte.com")
+end
+s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
 
 for _, path in pairs(hunt.fs.ls(os.getenv("temp"))) do
     if (path:path()):match("physmem") then

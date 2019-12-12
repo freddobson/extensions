@@ -1,7 +1,7 @@
 --[[
     Infocyte Extension
     Name: Evidence Collector
-    Type: Action
+    Type: Collection
     Description: Collects event logs, .dat files, etc. from system and forwards
         them to your Recovery point. Loads Powerforensics to bypass file locks
         Currently only works on Windows
@@ -10,14 +10,6 @@
     Updated: 20191125 (Gerritz)
 ]]--
 
-date = os.date("%Y%m%d")
-instance = hunt.net.api()
-if instance == '' then
-    instancename = 'offline'
-elseif instance:match("http") then
-    -- get instancename
-    instancename = instance:match(".+//(.+).infocyte.com")
-end
 
 -- SECTION 1: Inputs (Variables)
 
@@ -26,7 +18,9 @@ s3_user = nil
 s3_pass = nil
 s3_region = 'us-east-2' -- 'us-east-2'
 s3_bucket = 'test-extensions' -- 'test-extensions'
-s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname()..'/evidence' -- /filename will be appended
+s3path_modifier = "evidence" -- /filename will be appended
+--S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
+
 
 -- Proxy (optional)
 proxy = nil -- "myuser:password@10.11.12.88:8888"
@@ -74,9 +68,17 @@ function userfolders()
     return paths
 end
 
-function file_exists(name)
-    local f=io.open(name,"r")
-    if f~=nil then io.close(f) return true else return false end
+function path_exists(path)
+    -- Check if a file or directory exists in this path
+    -- add '/' on end to test if it is a folder
+   local ok, err, code = os.rename(path, path)
+   if not ok then
+      if code == 13 then
+         -- Permission denied, but it exists
+         return true
+      end
+   end
+   return ok, err
 end
 
 function install_powerforensic()
@@ -96,24 +98,28 @@ function install_powerforensic()
     ]==]
     if not hunt.env.has_powershell() then
         hunt.error("Powershell not found.")
+        return nil
     end
 
-    print("Initiatializing PowerForensics")
+    -- Make tempdir
+    logfolder = os.getenv("temp").."\\ic"
+    os.execute("mkdir "..logfolder)
+
     -- Create powershell process and feed script+commands to its stdin
-    logfile = os.getenv("temp").."\\ic\\iclog.log"
-    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - >> "..logfile, "w")
+    print("Initiatializing PowerForensics")
+    logfile = logfolder.."\\pslog.log"
+    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - > "..logfile, "w")
     pipe:write(script) -- load up powershell functions and vars (Powerforensics)
     r = pipe:close()
     if debug then
-        hunt.debug("Powershell Returned: "..tostring(r))
         local file,msg = io.open(logfile, "r")
         if file then
-            hunt.debug("Powershell Output:")
-            hunt.debug(file:read("*all"))
+            hunt.debug("Powershell Output (Success="..tostring(r).."):\n"..file:read("*all"))
         end
         file:close()
         os.remove(logfile)
     end
+    return true
 end
 
 
@@ -127,14 +133,16 @@ if not s3_region or not s3_bucket then
 end
 
 host_info = hunt.env.host_info()
-hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
-
--- Make tempdir
-os.execute("mkdir "..os.getenv("temp").."\\ic")
+osversion = host_info:os()
+hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 -- All OS-specific instructions should be behind an 'if' statement
 if hunt.env.is_windows() then
     -- Insert your Windows code
+
+    -- Make tempdir
+    os.execute("mkdir "..os.getenv("temp").."\\ic")
+
     if (use_powerforensics or MFT) and hunt.env.has_powershell() then
         install_powerforensic()
     end
@@ -225,27 +233,25 @@ if hunt.env.is_windows() then
     if MFT and hunt.env.has_powershell()  then
         temppath = os.getenv("TEMP").."\\ic\\icmft.csv"
         outpath = os.getenv("TEMP").."\\ic\\icmft.zip"
-        logfile = os.getenv("TEMP").."\\ic\\iclog.log"
+        logfile = os.getenv("TEMP").."\\ic\\pslog.log"
 
         cmd = 'Get-ForensicFileRecord | Export-Csv -NoTypeInformation -Path '..temppath..' -Force'
-        hunt.verbose("Getting MFT with PowerForensics and exporting to "..temppath)
-        hunt.verbose("Executing Powershell command: "..cmd)
+        hunt.debug("Getting MFT with PowerForensics and exporting to "..temppath)
+        hunt.debug("Executing Powershell command: "..cmd)
         local pipe = io.popen('powershell.exe -noexit -nologo -nop -command "'..cmd..'" >> '..logfile, 'r')
-        hunt.debug(pipe:read('*a'))
+        print(pipe:read('*a'))
         r = pipe:close()
         if debug then
-            hunt.debug("Powershell Returned: "..tostring(r))
             local file,msg = io.open(logfile, "r")
             if file then
-                hunt.debug("Powershell Output:")
-                hunt.debug(file:read("*all"))
+                hunt.debug("Powershell Output (success="..tostring(r).."):\n"..file:read("*all"))
             end
             file:close()
             os.remove(logfile)
         end
 
         -- Compress results
-        if file_exists(temppath) then
+        if path_exists(temppath) then
             hash = hunt.hash.sha1(temppath)
             hunt.log("Compressing (gzip) " .. temppath .. " (sha1=".. hash .. ") to " .. outpath)
             hunt.gzip(temppath, outpath, nil)
@@ -271,11 +277,19 @@ if hunt.env.is_windows() then
 
 else
     hunt.warn("Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    return
 end
 
 -- Upload Evidence
--- use s3 upload, without authentication (bucket must be writable without auth)
+instance = hunt.net.api()
+if instance == '' then
+    instancename = 'offline'
+elseif instance:match("infocyte") then
+    -- get instancename
+    instancename = instance:match("(.+).infocyte.com")
+end
 s3 = hunt.recovery.s3(s3_user, s3_pass, s3_region, s3_bucket)
+s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
 
 for name,path in pairs(paths) do
     f = hunt.fs.ls(path)
@@ -286,7 +300,7 @@ for name,path in pairs(paths) do
         if not infile and hunt.env.has_powershell() then
             -- Assume file locked by kernel, use powerforensics to copy
             cmd = 'Copy-ForensicFile -Path '..path..' -Destination '..outpath
-            hunt.verbose("File Locked. Executing: "..cmd)
+            hunt.debug("File Locked. Executing: "..cmd)
             local pipe = io.popen('powershell.exe -nologo -nop -command "'..cmd..'"', 'r')
             hunt.debug(pipe:read('*a'))
             pipe:close()
@@ -301,7 +315,11 @@ for name,path in pairs(paths) do
         end
 
         -- hash file
-        hash = hunt.hash.sha1(outpath)
+        hash, err = hunt.hash.sha1(outpath)
+        if not hash then
+            hunt.debug("Error hashing file: "..outpath..", error: "..err)
+            goto continue
+        end
 
         -- Upload file to S3
         s3path = s3path_preamble.."/"..name.."_"..f[1]:name()
@@ -310,8 +328,9 @@ for name,path in pairs(paths) do
         hunt.log("Uploaded "..name.." - "..path.." (size= "..string.format("%.2f", (f[1]:size()/1000)).."KB, sha1=".. hash .. ") to S3 bucket " .. link)
 
         os.remove(outpath)
+        ::continue::
     else
-        hunt.verbose(name.." failed. "..path.." does not exist.")
+        hunt.debug(name.." failed. "..path.." does not exist.")
     end
 end
 

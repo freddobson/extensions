@@ -8,14 +8,6 @@
     Updated: 20191123 (Gerritz)
 ]]--
 
-date = os.date("%Y%m%d")
-instance = hunt.net.api()
-if instance == '' then
-    instancename = 'offline'
-elseif instance:match("infocyte") then
-    -- get instancename
-    instancename = instance:match("(.+).infocyte.com")
-end
 
 -- SECTION 1: Inputs (Variables)
 
@@ -24,7 +16,8 @@ s3_user = nil
 s3_pass = nil
 s3_region = 'us-east-2' -- 'us-east-2'
 s3_bucket = 'test-extensions' -- 'test-extensions'
-s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname()..'/evidence' -- /filename will be appended
+s3path_modifier = "evidence" -- /filename will be appended
+--S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
 
 -- Proxy (optional)
 proxy = nil -- "myuser:password@10.11.12.88:8888"
@@ -54,9 +47,17 @@ end
 ----------------------------------------------------
 -- SECTION 2: Functions
 
-function file_exists(name)
-    local f=io.open(name,"r")
-    if f~=nil then io.close(f) return true else return false end
+function path_exists(path)
+    -- Check if a file or directory exists in this path
+    -- add '/' on end to test if it is a folder
+   local ok, err, code = os.rename(path, path)
+   if not ok then
+      if code == 13 then
+         -- Permission denied, but it exists
+         return true
+      end
+   end
+   return ok, err
 end
 
 function install_powerforensic()
@@ -76,24 +77,28 @@ function install_powerforensic()
     ]==]
     if not hunt.env.has_powershell() then
         hunt.error("Powershell not found.")
+        return nil
     end
 
-    print("Initiatializing PowerForensics")
+    -- Make tempdir
+    logfolder = os.getenv("temp").."\\ic"
+    os.execute("mkdir "..logfolder)
+
     -- Create powershell process and feed script+commands to its stdin
-    logfile = os.getenv("temp").."\\ic\\iclog.log"
-    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - >> "..logfile, "w")
+    print("Initiatializing PowerForensics")
+    logfile = logfolder.."\\pslog.log"
+    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - > "..logfile, "w")
     pipe:write(script) -- load up powershell functions and vars (Powerforensics)
     r = pipe:close()
     if debug then
-        hunt.debug("Powershell Returned: "..tostring(r))
         local file,msg = io.open(logfile, "r")
         if file then
-            hunt.debug("Powershell Output:")
-            hunt.debug(file:read("*all"))
+            hunt.debug("Powershell Output (Success="..tostring(r).."):\n"..file:read("*all"))
         end
         file:close()
         os.remove(logfile)
     end
+    return true
 end
 
 ----------------------------------------------------
@@ -106,15 +111,29 @@ if not s3_region or not s3_bucket then
 end
 
 host_info = hunt.env.host_info()
-hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+osversion = host_info:os()
+hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
-os.execute("mkdir "..os.getenv("temp").."\\ic")
+-- Make tempdir
+logfolder = os.getenv("temp").."\\ic"
+lf = hunt.fs.ls(logfolder)
+if #lf == 0 then os.execute("mkdir "..logfolder) end
 
 if use_powerforensics and hunt.env.has_powershell() then
     install_powerforensic()
 end
 
+
+instance = hunt.net.api()
+if instance == '' then
+    instancename = 'offline'
+elseif instance:match("infocyte") then
+    -- get instancename
+    instancename = instance:match("(.+).infocyte.com")
+end
 s3 = hunt.recovery.s3(s3_user, s3_pass, s3_region, s3_bucket)
+s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
+
 
 for _, p in pairs(paths) do
     for _, path in pairs(hunt.fs.ls(p)) do
@@ -141,7 +160,7 @@ for _, p in pairs(paths) do
         end
 
         -- Hash the file copy
-        if file_exists(outpath) then
+        if path_exists(outpath) then
             hash = hunt.hash.sha1(outpath)
             s3path = s3path_preamble.."/"..path:name().."-"..hash
             link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path

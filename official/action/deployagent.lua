@@ -9,8 +9,8 @@
 ]]--
 
 -- SECTION 1: Inputs (Variables)
-regkey = nil
-force = false
+regkey = nil -- Optional Registration Key for installation
+force = false -- Force Reinstall with new config
 
 ----------------------------------------------------
 -- SECTION 2: Functions
@@ -47,7 +47,7 @@ end
 -- SECTION 3: Actions
 
 host_info = hunt.env.host_info()
-hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 if is_agent_installed() then
     hunt.log("Infocyte Agent is already installed")

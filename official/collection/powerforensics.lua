@@ -1,6 +1,6 @@
 --[[
 	Infocyte Extension
-	Name: PowerForensics
+	Name: PowerForensics MFT
 	Type: Collection
 	Description: Deploy PowerForensics and gathers forensic data to Recovery
         Location
@@ -9,15 +9,6 @@
 	Updated: 20191025 (Gerritz)
 ]]--
 
-host_info = hunt.env.host_info()
-date = os.date("%Y%m%d")
-instance = hunt.net.api()
-if instance == '' then
-    instancename = 'offline'
-elseif instance:match("infocyte") then
-    -- get instancename
-    instancename = instance:match("(.+).infocyte.com")
-end
 
 -- SECTION 1: Inputs (Variables)
 -- S3 Bucket (Mandatory)
@@ -25,7 +16,8 @@ s3_user = nil
 s3_pass = nil
 s3_region = 'us-east-2' -- US East (Ohio)
 s3_bucket = 'test-extensions'
-s3path_preamble = instancename..'/'..date..'/'..(hunt.env.host_info()):hostname().."/evidence" -- /filename will be appended
+s3path_modifier = "evidence"
+--S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
 
 
 ----------------------------------------------------
@@ -48,29 +40,41 @@ function install_powerforensic()
     ]==]
     if not hunt.env.has_powershell() then
         hunt.error("Powershell not found.")
+        return nil
     end
 
-    print("Initiatializing PowerForensics")
+    -- Make tempdir
+    logfolder = os.getenv("temp").."\\ic"
+    os.execute("mkdir "..logfolder)
+
     -- Create powershell process and feed script+commands to its stdin
-    logfile = os.getenv("temp").."\\ic\\iclog.log"
-    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - >> "..logfile, "w")
+    print("Initiatializing PowerForensics")
+    logfile = logfolder.."\\pslog.log"
+    local pipe = io.popen("powershell.exe -noexit -nologo -nop -command - > "..logfile, "w")
     pipe:write(script) -- load up powershell functions and vars (Powerforensics)
     r = pipe:close()
     if debug then
-        hunt.debug("Powershell Returned: "..tostring(r))
         local file,msg = io.open(logfile, "r")
         if file then
-            hunt.debug("Powershell Output:")
-            hunt.debug(file:read("*all"))
+            hunt.debug("Powershell Output (Success="..tostring(r).."):\n"..file:read("*all"))
         end
         file:close()
         os.remove(logfile)
     end
+    return true
 end
 
-function file_exists(name)
-    local f=io.open(name,"r")
-    if f~=nil then io.close(f) return true else return false end
+function path_exists(path)
+    -- Check if a file or directory exists in this path
+    -- add '/' on end to test if it is a folder
+   local ok, err, code = os.rename(path, path)
+   if not ok then
+      if code == 13 then
+         -- Permission denied, but it exists
+         return true
+      end
+   end
+   return ok, err
 end
 
 ----------------------------------------------------
@@ -82,7 +86,9 @@ if not s3_region or not s3_bucket then
     return
 end
 
-hunt.verbose("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+host_info = hunt.env.host_info()
+osversion = host_info:os()
+hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. host_info:domain() .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
 
 
 if hunt.env.is_windows() and hunt.env.has_powershell() then
@@ -91,23 +97,15 @@ if hunt.env.is_windows() and hunt.env.has_powershell() then
 
     temppath = os.getenv("TEMP").."\\ic\\icmft.csv"
     outpath = os.getenv("TEMP").."\\ic\\icmft.zip"
-    logfile = os.getenv("TEMP").."\\ic\\iclog.log"
 
     cmd = 'Get-ForensicFileRecord | Export-Csv -NoTypeInformation -Path '..temppath..' -Force'
-    hunt.verbose("Getting MFT with PowerForensics and exporting to "..temppath)
-    hunt.verbose("Executing Powershell command: "..cmd)
-    local pipe = io.popen('powershell.exe -noexit -nologo -nop -command "'..cmd..'" >> '..logfile, 'r')
-    hunt.debug(pipe:read('*a'))
+    hunt.debug("Getting MFT with PowerForensics and exporting to "..temppath)
+    hunt.debug("Executing Powershell command: "..cmd)
+    local pipe = io.popen('powershell.exe -nologo -nop -command "'..cmd..'"', 'r')
+    log = pipe:read('*a')
     r = pipe:close()
     if debug then
-        hunt.debug("Powershell Returned: "..tostring(r))
-        local file,msg = io.open(logfile, "r")
-        if file then
-            hunt.debug("Powershell Output:")
-            hunt.debug(file:read("*all"))
-        end
-        file:close()
-        os.remove(logfile)
+        hunt.debug("Powershell (success="..tostring(r)..") Output:\n"..log)
     end
 
 else
@@ -135,9 +133,17 @@ end
 
 
 -- Recover evidence to S3
+instance = hunt.net.api()
+if instance == '' then
+    instancename = 'offline'
+elseif instance:match("infocyte") then
+    -- get instancename
+    instancename = instance:match("(.+).infocyte.com")
+end
 recovery = hunt.recovery.s3(s3_user, s3_pass, s3_region, s3_bucket)
+s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
 s3path = s3path_preamble .. '/mft.zip'
-hunt.verbose("Uploading gzipped MFT (size= "..string.format("%.2f", (file[1]:size()/1000000)).."MB, sha1=".. hash .. ") to S3 bucket " .. s3_region .. ":" .. s3_bucket .. "/" .. s3path)
+hunt.debug("Uploading gzipped MFT (size= "..string.format("%.2f", (file[1]:size()/1000000)).."MB, sha1=".. hash .. ") to S3 bucket " .. s3_region .. ":" .. s3_bucket .. "/" .. s3path)
 recovery:upload_file(outpath, s3path)
 hunt.log("MFT successfully uploaded to S3.")
 hunt.status.good()
