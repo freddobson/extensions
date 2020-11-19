@@ -1,8 +1,10 @@
---[[
-    Infocyte Extension
-    Name: Ciscofy Hardening Check
-    Type: Collection
-    Description: | Leverage 3rd Party utility to assess hardening level
+--[=[
+filetype = "Infocyte Extension"
+
+[info]
+name = "Ciscofy Hardening Check"
+type = "Collection"
+description = """Leverage 3rd Party utility to assess hardening level
         of a linux system.
         Source =  https://cisofy.com/
         Extension will simply pull down cisofy, unpack it
@@ -13,12 +15,31 @@
         system is required.
 
         Note, the extension may take up to 2 minutes to complete
-        This only runs on Linux operating systems |
-    Author: John Norden
-    Guid: 36e9e84e-efd3-481c-8c2b-9a9b0e419419
-    Created: 20191120
-    Updated: 20200221
---]]
+        This only runs on Linux operating systems"""
+author = "Infocyte"
+guid = "36e9e84e-efd3-481c-8c2b-9a9b0e419419"
+created = "2019-11-20"
+updated = "2020-09-10"
+
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[args]]
+
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
+
+--[=[ SECTION 2: Functions ]=]
+
+--[=[ SECTION 3: Collection ]=]
 
 if not hunt.env.is_linux() then return end
 hunt.log("Running Hardening Check")

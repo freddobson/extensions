@@ -1,77 +1,145 @@
---[[
-	Infocyte Extension
-	Name: E-Discovery
-	Type: Collection
-	Description: | Proof of Concept. Searches the hard drive for office documents
+--[=[
+filetype = "Infocyte Extension"
+
+[info]
+name = "EDiscovery"
+type = "Collection"
+description = """Proof of Concept. Searches the hard drive for office documents
         (currently only .doc and .docx files) with specified keywords or alldocs.
         1. Find any office doc on a desktop/server
         2. Upload doc directly to S3 Bucket
         3. Upload metadata csv with filehash as key
 
-        https://asecuritysite.com/forensics/magic |
-    Author: Multiple (Maintained by Gerritz)
-    Guid: 5a0e3b34-4692-4f3c-afff-c84102785756
-	Created: 20190919
-	Updated: 2020406 (Gerritz)
---]]
+        https://asecuritysite.com/forensics/magic"""
+author = "Multiple"
+guid = "5a0e3b34-4692-4f3c-afff-c84102785756"
+created = "2019-09-19"
+updated = "2020-09-10"
+
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+    name = "ediscovery_default_patterns"
+    description = "default search strings or regex patterns to search within files if not provided in runtime args. Comma seperated if more than one."
+    type = "string"
+    required = true
+
+    [[globals]]
+    name = "ediscovery_default_path"
+    description = "Default root path to search (will recurse 3 deep) if not provided by runtime args"
+    type = "string"
+    required = false
+    default = "C:/users/"
+
+    [[globals]]
+    name = "ediscovery_upload_to_s3"
+    description = "Sets e-discovery extension to upload matching documents to S3. Otherwise just uploads metadata."
+    type = "boolean"
+    default = false
+
+    [[globals]]
+    name = "s3_keyid"
+    description = "S3 Bucket key Id for uploading"
+    type = "string"
+
+    [[globals]]
+    name = "s3_secret"
+    description = "S3 Bucket key Secret for uploading"
+    type = "secret"
+
+    [[globals]]
+    name = "s3_region"
+    description = "S3 Bucket key Id for uploading. Example: 'us-east-2'"
+    type = "string"
+    required = true
+
+    [[globals]]
+    name = "s3_bucket"
+    description = "S3 Bucket name for uploading"
+    type = "string"
+    required = true
+
+    [[globals]]
+    name = "proxy"
+    description = "Proxy info. Example: myuser:password@10.11.12.88:8888"
+    type = "string"
+    required = false
+
+    [[globals]]
+    name = "debug"
+    description = "Print debug information"
+    type = "boolean"
+    default = false
+    required = false
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[args]]
+    name = "patterns"
+    description = "Pattern or comma seperated list of patterns to search for in documents"
+    type = "string"
+    required = false
+
+    [[args]]
+    name = "path"
+    description = "Root path to search (will recurse 3 deep)"
+    type = "string"
+    required = false
+    default = "C:/users/"
+
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
+
+path = hunt.arg.string("path") or hunt.global.string("ediscovery_default_path", false, 'C:/Users/')
+patterns = hunt.arg.string("patterns", false) or hunt.global.string("ediscovery_default_patterns", true)
+
+all_office_docs = hunt.global.boolean("ediscovery-all_office_docs", false, false) -- set to true to bypass string search
+
+-- S3 Bucket
+upload_to_s3 = hunt.global.boolean("ediscovery-upload_to_s3", false, false) -- set this to true to upload to your S3 bucket
+local debug = hunt.global.boolean("debug", false, false)
+proxy = hunt.global.string("proxy", false)
+s3_keyid = hunt.global.string("s3_keyid", false)
+s3_secret = hunt.global.string("s3_secret", false)
+s3_region = hunt.global.string("s3_region", upload_to_s3)
+s3_bucket = hunt.global.string("s3_bucket", upload_to_s3)
+s3path_modifier = 'ediscovery'
+--S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
 
 
---[[ SECTION 1: Inputs --]]
-searchpaths = {
-    'C:/Users/'
-}
-strings = {
-    'test',
-    'Gerritz'
-}
-
-all_office_docs = false -- set to true to bypass string search
 --Options for all_office_docs:
 opts = {
     "files",
-    "size<3000kb",
-    "recurse=2"
+    "size<1000kb",
+    "size>1b",
+    "recurse=1"
 }
 
-findByFileHeader = false -- SLOW! False [Default] will search by file path extensions:
+findByFileHeader = hunt.global.boolean("findByFileHeader", false, false) -- SLOW! False [Default] will search by file path extensions:
 magic_numbers = { -- HEX
     '504B0304', -- [PK] Zip or office docx, xlsx, pptx, etc.
     '25504446', -- [%PDF] pdf
     'D0CF11E0A1B11AE1' -- Legacy Office Document (doc, xls, ppt, msg)
 }
 extensions = {
-    "doc",
-    "docx",
-    "xls",
-    "xlsx",
-    "ppt",
-    "pptx",
-    "pdf"
+    "txt"
 }
 
--- S3 Bucket
-upload_to_s3 = false -- set this to true to upload to your S3 bucket
-s3_keyid = nil
-s3_secret = nil
-s3_region = 'us-east-2' -- US East (Ohio)
-s3_bucket = 'test-extensions'
-s3path_modifier = 'ediscovery'
---S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
-
---Proxy
-proxy = nil -- "myuser:password@10.11.12.88:8888"
-
-
---[[ SECTION 2: Functions --]]
+--[=[ SECTION 2: Functions ]=]
 
 -- FileSystem Functions --
 function path_exists(path)
-    --[[
+    --[=[
         Check if a file or directory exists in this path. 
         Input:  [string]path -- Add '/' on end of the path to test if it is a folder
         Output: [bool] Exists
                 [string] Error message -- only if failed
-    ]] 
+    ]=] 
    local ok, err = os.rename(path, path)
    if not ok then
       if err == 13 then
@@ -93,11 +161,11 @@ function get_fileextension(path)
 end
 
 function get_magicnumber(path)
-    --[[
+    --[=[
         Get file magic number (first 8 bytes) from header. 
         Input:  [string]path
         Output: [string]headerinhex
-    ]] 
+    ]=] 
     local f,err = io.open(path, "rb")
     if not f then
         hunt.error('Could not open file: '..err)
@@ -118,10 +186,10 @@ end
 
 
 function userfolders()
-    --[[
+    --[=[
         Returns a list of userfolders to iterate through
         Output: [list]ret -- List of userfolders (_, path)
-    ]]
+    ]=]
     local paths = {}
     local u = {}
     for _, userfolder in pairs(hunt.fs.ls("C:\\Users", {"dirs"})) do
@@ -149,7 +217,7 @@ function parse_csv(path, sep)
     for line in file:lines() do
         local n = 1
         local fields = {}
-        for str in string.gmatch(line, "([^"..sep.."]+)") do
+        for str in string.gmatch(line, "([^${sep}]+)") do
             s = str:gsub('^"(.+)"$', "%1")
             if #header == 0 then
                 fields[n] = s
@@ -171,11 +239,11 @@ end
 
 
 function list_to_pslist(list)
-    --[[
+    --[=[
         Converts a lua list (table) into a stringified powershell array that can be passed to Powershell
         Input:  [list]list -- Any list with (_, val) format
         Output: [string] -- Example = '@("Value1","Value2","Value3")'
-    ]] 
+    ]=] 
     psarray = "@("
     for _,value in ipairs(list) do
         -- print("Param: " .. tostring(value))
@@ -185,14 +253,21 @@ function list_to_pslist(list)
     return psarray
 end
 
+function string_to_list(str)
+    -- Converts a comma seperated list to a lua list object
+    list = {}
+    for s in string.gmatch(str, '([^,]+)') do
+        table.insert(list, s)
+    end
+    return list
+end
 
 
---[[ SECTION 3: Collection --]]
+
+--[=[ SECTION 3: Collection ]=]
 
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
-
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
 -- Check required inputs
 if upload_to_s3 and (not s3_region or not s3_bucket) then
@@ -204,6 +279,8 @@ if not hunt.env.is_windows() then
     return
 end
 
+strings = string_to_list(patterns)
+searchpaths = string_to_list(path)
 
 if upload_to_s3 then
     instance = hunt.net.api()
@@ -213,15 +290,15 @@ if upload_to_s3 then
         -- get instancename
         instancename = instance:match("(.+).infocyte.com")
     end
-    s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
+    s3path_preamble = f"${instancename}/${os.date('%Y%m%d')}/${host_info:hostname()}/${s3path_modifier}"
     s3 = hunt.recovery.s3(s3_keyid, s3_secret, s3_region, s3_bucket)
-    hunt.log("S3 Upload to "..s3_region.." bucket: "..s3_bucket)
+    hunt.log(f"S3 Upload to ${s3_region} bucket: ${s3_bucket}")
 else
     hunt.log("No S3 file upload selected. Reporting only.")
 end
 
 -- #region initscript
-script = [==[
+script = [=[
 function Get-FileSignature {
     [CmdletBinding()]
     Param(
@@ -430,7 +507,7 @@ Function Get-StringsMatch {
         return $results
     }
 }
-]==]
+]=]
 -- #endregion
 
 
@@ -439,46 +516,43 @@ if all_office_docs then
     officedocs = {}
 
     paths = {}
-    for _,rootpath in pairs(searchpaths) do
-        for _,path in pairs(hunt.fs.ls(rootpath, opts)) do
-            if path_exists(path:path()) then 
-                if findByFileHeader then 
-                    magic = get_magicnumber(path)
-                    hunt.verbose(magic)
-                    for _, m in ipairs(magic_numbers) do 
-                        paths:add(path)
-                    end
+    for _,path in pairs(hunt.fs.ls(path, opts)) do
+        if path_exists(path:path()) then 
+            if findByFileHeader then 
+                magic = get_magicnumber(path)
+                hunt.verbose(magic)
+                for _, m in ipairs(magic_numbers) do 
+                    paths:add(path)
                 end
-            else
-                hunt.error('File does not exist')
             end
         else
-            print('File does not exist')
+            hunt.error('File does not exist')
         end
     end
     --end
     
-    for _, path in pairs(paths) do
+    for _, p in pairs(paths) do
+        path = p
         hash = hunt.hash.sha1(path:full())
         if (string.len(hash)) ~= 40 then
-            hunt.error("Problem with file "..path:path()..": "..hash)
+            hunt.error(f"Problem with file ${path:path()}, hash=${hash}")
             break
         end
-        --print("["..ext.."] "..path:full().." ["..hash.."]") -- debug
+        --print("[${ext}] "..path:full().." [${hash}]") -- debug
         
         local file = {
             hash = hash,
             path = path:full(),
-            size = path:size()
+            size = string.format("%.2f", (path:size()/1000)).."KB"
         }
         officedocs[hash] = file
         if upload_to_s3 then
-            s3path = s3path_preamble.."/"..hash..ext
-            link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path
-            hunt.log("Uploading "..path:path().." (size= "..string.format("%.2f", (path:size()/1000)).."KB, sha1=".. hash .. ") to S3 bucket " .. link)
+            s3path = f"${s3path_preamble}/${hash}${ext}"
+            link = f"https://${s3_bucket}.s3.${s3_region}.amazonaws.com/${s3path}"
+            hunt.log(f"Uploading ${path:path()} (size=${file.size}, sha1=${hash}) to S3 bucket ${link}")
             s3:upload_file(path:path(), s3path)
         else
-            hunt.log("Found "..path:path().." (size= "..string.format("%.2f", (path:size()/1000)).."KB, sha1=".. hash .. ")")
+            hunt.log(f"Found ${path:path()} (size= ${file.size}, sha1=${hash})")
         end
         break
     end
@@ -488,12 +562,12 @@ if all_office_docs then
         tmp = io.open(tmpfile, "w")
         tmp:write("sha1,path,size\n")
         for hash, file in pairs(officedocs) do
-            tmp:write(hash..","..file.path..","..file.size.."\n")
+            tmp:write(f"${hash},${file.path},${file.size}\n")
             --hunt.log(hash..","..file.path..","..file.size)
         end
         tmp:flush()
         tmp:close()
-        s3path = s3path_preamble.."/index.csv"
+        s3path = f"${s3path_preamble}/index.csv"
         s3:upload_file(tmpfile, s3path)
         hunt.verbose("Index uploaded to S3.")
         os.remove(tmpfile)
@@ -503,17 +577,19 @@ else
         -- Insert your Windows Code
         tempfile = [[c:\windows\temp\icext.csv]]
 
-        for _, searchpath in pairs(searchpaths) do
+        for _, p in pairs(searchpaths) do
             -- Run powershell
-            cmd = 'Get-StringsMatch -Path "' .. searchpath .. '" -Temppath "' .. tempfile .. '" -Strings ' .. list_to_pslist(strings) .. ' -filetypes '.. list_to_pslist(extensions)
-            hunt.verbose("Executing Powershell Command: "..cmd)
+            searchpath = p
+            cmd = f"Get-StringsMatch -Path '${searchpath}' -Temppath '${tempfile}' -Strings ${list_to_pslist(strings)} -filetypes ${list_to_pslist(extensions)}"
+            hunt.verbose(f"Executing Powershell Command: ${cmd}")
             script = script..'\n'..cmd
             out, err = hunt.env.run_powershell(script)
             if out then
-                hunt.debug("Powershell Returned: "..out)
+                hunt.debug(f"Powershell Returned: ${out}")
             else 
-                hunt.error("Powershell command errored: "..err)
+                hunt.error(f"Powershell command errored: ${err}")
             end
+            os.execute("sleep 1")
 
             -- Parse CSV output from Powershell
             csv = parse_csv(tempfile, '|')
@@ -521,31 +597,33 @@ else
                 hunt.error("Could not parse CSV.")
                 return
             end
-            for _, item in pairs(csv) do
+            for _, i in pairs(csv) do
                 if item then
+                    item = i
                     output = true
                     if upload_to_s3 then
-                        if (string.len(item["SHA1"])) == 40 then
-                            ext = GetFileExtension(item["File"])
-                            s3path = s3path_preamble.."/"..item["SHA1"]..ext
-                            link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path
-                            s3:upload_file(item["File"], s3path)
-                            hunt.log("Uploaded "..item["File"].." (size= "..item["FilesizeKB"].."KB, sha1=".. item["SHA1"] .. ") to S3 bucket: " .. link)
+                        if (string.len(item['SHA1'])) == 40 then
+                            ext = GetFileExtension(item['File'])
+                            s3path = f"${s3path_preamble}/${item['SHA1']}${ext}"
+                            link = f"https://${s3_bucket}.s3.${s3_region}.amazonaws.com/${s3path}"
+                            s3:upload_file(item['File'], s3path)
+                            hunt.log(f"Uploaded ${item['File']} (size= ${item['FilesizeKB']}KB, sha1=${item['SHA1']} to S3 bucket: ${link})")
                         else
-                            hunt.error("Could not upload: "..item["File"].." ("..item["SHA1"]..")")
+                            hunt.error(f"Could not upload: ${item['File']} (${item['SHA1']})")
                         end
                     else
-                        hunt.log(item["File"].." (size= "..item["FilesizeKB"].."KB, sha1=".. item["SHA1"] .. ") matched on keyword '"..item["Match"].."' ("..item["TextAround"]..")")
+                        hunt.log(f"${item['File']} (size= ${item['FilesizeKB']}KB, sha1=${item['SHA1']}) matched on keyword '${item['Match']}' (${item['TextAround']})")
                     end
+                    i = nil
                 end
             end
 
             if upload_to_s3 then
                 -- Upload Index
-                s3path = s3path_preamble.."/index.csv"
-                link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path
+                s3path = f"${s3path_preamble}/index.csv"
+                link = f"https://${s3_bucket}.s3.${s3_region}.amazonaws.com/${s3path}"
                 s3:upload_file(tempfile, s3path)
-                hunt.log("Uploaded Index to S3 bucket " .. link)
+                hunt.log(f"Uploaded Index to S3 bucket ${link}")
             end
 
             --Cleanup
@@ -561,5 +639,3 @@ if output then
 else
     hunt.status.good()
 end
-
-

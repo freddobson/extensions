@@ -1,26 +1,40 @@
---[[
-    Infocyte Extension
-    Name: ld.so.preload Rootkit Detector
-    Type: Collection
-    Description: Analyzes any references in ld.so.preload (always suspicious
-        cause programs launched can intercept system calls)
-    Author: Infocyte
-    Guid: 0153a459-c36b-4542-940e-e4c81ab1eb63
-    Created: 20191216
-    Updated: 20191216 (Gerritz)
---]]
+--[=[
+filetype = "Infocyte Extension"
 
---[[ SECTION 1: Inputs --]]
+[info]
+name = "ld.so.preload Rootkit Detector"
+type = "Collection"
+description = """Analyzes any references in ld.so.preload (always suspicious
+        cause programs launched can intercept system calls)"""
+author = "Infocyte"
+guid = "0153a459-c36b-4542-940e-e4c81ab1eb63"
+created = "2019-12-16"
+updated = "2020-09-10"
+
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[args]]
+
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
 
 
---[[ SECTION 2: Functions --]]
+--[=[ SECTION 2: Functions ]=]
 
 
---[[ SECTION 3: Collection --]]
+--[=[ SECTION 3: Collection ]=]
 
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
 if hunt.env.is_linux() or hunt.env.has_sh() or hunt.env.is_macos() then
 
@@ -34,7 +48,7 @@ if hunt.env.is_linux() or hunt.env.has_sh() or hunt.env.is_macos() then
         file, err = io.open(path, "r")
         if file then
             for line in file:lines() do
-                hunt.log("Analyzing: "..line)
+                hunt.log(f"Analyzing: ${line}")
                 -- Add to artifacts and send file through Infocyte analysis pipeline
                 autostart = hunt.survey.autostart()
                 autostart:exe(line)
@@ -42,13 +56,13 @@ if hunt.env.is_linux() or hunt.env.has_sh() or hunt.env.is_macos() then
                 hunt.survey.add(autostart)
             end
         else
-            hunt.error("Could not read "..path..": ".. err)
+            hunt.error(f"Could not read ${path}: ${err}")
             return nil
         end
     else
         hunt.status.good()
     end
 else
-    hunt.warn("Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    hunt.warn(f"Not a compatible operating system for this extension [${host_info:os()}]")
     hunt.status.good()
 end

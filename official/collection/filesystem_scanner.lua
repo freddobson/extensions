@@ -1,44 +1,99 @@
---[[
-    Infocyte Extension
-    Name: Filesystem Scanner
-    Type: Collection
-    Description: | Scans system for files matching a set of regexes against filenames|
-    Author: Chris Gerritz
-    Guid: 1775f23f-34a6-4f83-91e6-49c48faa66bb
-    Created: 20200406
-    Updated: 20200514
---]]
+--[=[
+filetype = "Infocyte Extension"
+
+[info]
+name = "Filesystem Scanner"
+type = "Collection"
+description = """Scans system for filenames matching a set of regex patterns (like ransomware notes)"""
+author = "Infocyte"
+guid = "1775f23f-34a6-4f83-91e6-49c48faa66bb"
+created = "2020-04-06"
+updated = "2020-09-10"
+
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+    name = "filesystem_scanner_default_regex_bad"
+    description = "Filesystem scanner regex to produce an alerting match against"
+    type = "string"
+    default = """DECRYPT"""
+
+    [[globals]]
+    name = "filesystemscanner_default_regex_suspicious"
+    description = "Filesystem scanner regex to produce a non-alerting match against"
+    type = "string"
+    default = """readme.*txt$"""
+
+    [[globals]]
+    name = "trailing_days"
+    type = "number"
+    default = 60
+    required = false
 
 
---[[ SECTION 1: Inputs --]]
-searchpaths = {
-    'C:\\Users\\',
-    'C:\\Windows\\Temp'
-}
+## ARGUMENTS ##
+# Runtime arguments
 
---Search Options:
-startdate = '05-01-2020'
-recurse_depth = 3
+    [[args]]
+    name = "regex_bad"
+    description = "Filesystem scanner regex to produce an alerting match against"
+    type = "string"
 
-filename_regex_suspicious = {
-    [[^.*\.txt$]]
-}
+    [[args]]
+    name = "regex_suspicious"
+    description = "Filesystem scanner regex to produce a non-alerting match against"
+    type = "string"
 
-filename_regex_bad = {
-    [[^[0-9,A-Z,a-z]{4,6}-Readme\.txt$]],
-}
+    [[args]]
+    name = "path"
+    description = "Path or comma-seperated list of paths to search"
+    type = "string"
+    default = 'C:/users'
+
+    [[args]]
+    name = "recurse_depth"
+    description = "Levels below the folder to search through"
+    type = "number"
+    default = 3
 
 
---[[ SECTION 2: Functions --]]
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
+
+regex_suspicious = hunt.arg.string("regex_suspicious") or hunt.global.string("filesystemscanner_default_regex_suspicious", false, [[readme.*\.txt$]])
+regex_bad = hunt.arg.string("regex_bad") or 
+hunt.global.string("filesystem_scanner_default_regex_bad", false, [[(^[0-9,A-Z,a-z]{4,6}-Readme\.txt$)|DECRYPT]])
+
+path = hunt.global.string("path", false, "C:/Users")
+paths = {}
+if path ~= nil then
+    -- Split comma-seperated values
+	for val in string.gmatch(path, '[^,%s]+') do
+		table.insert(paths, val)
+	end
+end
+
+recurse_depth = hunt.arg.number("recurse_depth", false, 3)
+
+--experimental (not in use)
+powershell = not hunt.global.boolean("disable_powershell", false, false)
+trailing_days = hunt.global.number("trailing_days", false, 30)
+
+
+--[=[ SECTION 2: Functions ]=]
 
 -- FileSystem Functions --
 function path_exists(path)
-    --[[
+    --[=[
         Check if a file or directory exists in this path. 
         Input:  [string]path -- Add '/' on end of the path to test if it is a folder
         Output: [bool] Exists
                 [string] Error message -- only if failed
-    ]] 
+    ]=] 
    local ok, err = os.rename(path, path)
    if not ok then
       if err == 13 then
@@ -60,10 +115,10 @@ function get_fileextension(path)
 end
 
 function userfolders()
-    --[[
+    --[=[
         Returns a list of userfolders to iterate through
         Output: [list]ret -- List of userfolders (_, path)
-    ]]
+    ]=]
     local paths = {}
     local u = {}
     for _, userfolder in pairs(hunt.fs.ls("C:\\Users", {"dirs"})) do
@@ -78,20 +133,19 @@ function userfolders()
     return paths
 end
 
-
 function parse_csv(path, sep)
-    --[[
+    --[=[
         Parses a CSV on disk into a lua list.
         Input:  [string]path -- Path to csv on disk
                 [string]sep -- CSV seperator to use. defaults to ','
         Output: [list]
-    ]] 
+    ]=] 
     tonum = true
     sep = sep or ','
     local csvFile = {}
     local file,msg = io.open(path, "r")
     if not file then
-        hunt.error("CSV Parser failed: ".. msg)
+        hunt.error(f"CSV Parser failed: ${msg}")
         return nil
     end
     local header = {}
@@ -99,7 +153,7 @@ function parse_csv(path, sep)
         local n = 1
         local fields = {}
         if not line:match("^#TYPE") then 
-            for str in string.gmatch(line, "([^"..sep.."]+)") do
+            for str in string.gmatch(line, "([^${sep}]+)") do
                 s = str:gsub('"(.+)"', "%1")
                 if not s then 
                     hunt.debug(line)
@@ -125,31 +179,62 @@ function parse_csv(path, sep)
 end
 
 
---[[ SECTION 3: Collection --]]
+--[=[ SECTION 3: Collection ]=]
 
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
+
+startdate = os.date("%x", os.time()-60*60*24*trailing_days)
 
 hunt.status.good()
 
-tmp = "C:\\windows\\temp\\ic\\out.csv"
-for _, path in pairs(searchpaths) do 
-    for _,m in pairs(filename_regex) do 
-        cmd = "Get-ChildItem -Path '"..path.."' -Recurse -Depth "..recurse_depth.." -Filter *.txt | where-object { $_.Name -match '"..m.."' } | Select FullName -ExpandProperty FullName"
-        out, err = hunt.env.run_powershell(cmd)
-        if out then 
-            for line in out:gmatch"[^\n]+" do
-                hunt.status.suspicious() -- Set Threat to Suspicious on finding
-                hunt.log("'"..m.."': "..line) -- Send to Infocyte Extension Output
-            end
-        else 
-            hunt.error("Error running powershell: "..err)
+for _, path in pairs(paths) do 
+    opts = {
+        "files",
+        f"recurse=${recurse_depth}"
+    }
+    for _, fi in pairs(hunt.fs.ls(path, opts)) do 
+        file = fi
+        fn = get_filename(file:path())
+        if regex_bad and string.find(fn, regex_bad) then
+            hunt.status.bad()
+            hunt.log(f"[BAD]'${regex_bad}': ${file:path()}")
+        end
+        if regex_suspicious and string.find(fn, regex_suspicious) then 
+            hunt.status.bad()
+            hunt.log(f"[BAD]'${regex_suspicious}': ${file:path()}")
         end
     end
 end
-os.remove(tmp)
+
+if powershell then
+    for _, path in pairs(paths) do 
+        cmd = f"Get-ChildItem -Path '${path}' -Recurse -Depth ${recurse_depth} -Filter *.txt | where-object { $_.Name -match '${regex_bad}' } | Select FullName -ExpandProperty FullName"
+        out, err = hunt.env.run_powershell(cmd)
+        if out then
+            for line in out:gmatch("[^\n]+") do
+                hunt.status.bad() -- Set Threat to Suspicious on finding
+                hunt.log(f"[BAD]'${regex_bad}': ${line}") -- Send to Infocyte Extension Output
+            end
+        else
+            hunt.error(f"Error running powershell: ${err}")
+        end
+    end
+
+    if regex_suspicious then 
+        cmd = "Get-ChildItem -Path '${path}' -Recurse -Depth ${recurse_depth} -Filter *.txt | where-object { $_.Name -match '${regex_suspicious}' } | Select FullName -ExpandProperty FullName"
+        out, err = hunt.env.run_powershell(cmd)
+        if out then
+            for line in out:gmatch"[^\n]+" do
+                hunt.status.suspicious() -- Set Threat to Suspicious on finding
+                hunt.log(f"[SUSPICIOUS]'${regex_suspicious}': ${line}") -- Send to Infocyte Extension Output
+            end
+        else 
+            hunt.error(f"Error running powershell: ${err}")
+        end
+    end
+end
 
 hunt.log("Result: Extension successfully executed")

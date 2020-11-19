@@ -1,51 +1,87 @@
---[[
-    Infocyte Extension
-    Name: Yara Scanner
-    Type: Collection
-    Description: Example script showing how to use YARA
-    Author: Infocyte
-    Guid: f0565351-1dc3-4a94-90b3-34a5765b33bc
-    Created: 20191018
-    Updated: 20200318 (Gerritz)
---]]
+--[=[
+filetype = "Infocyte Extension"
 
---[[ SECTION 1: Inputs --]]
+[info]
+name = "Yara Scanner"
+type = "Collection"
+description = """Scans files on disk with YARA signatures 
+    categorized as either informational, suspicious, or bad"""
+author = "Infocyte"
+guid = "f0565351-1dc3-4a94-90b3-34a5765b33bc"
+created = "2019-10-18"
+updated = "2020-09-10"
 
--- This extension will yara scan files below
-scanactiveprocesses = true
-scanappdata = false -- Scans APPDATA folders for every user
-appdata_opts = {
-    "files",
-    "size<5mb", -- any file below this size
-    "recurse=1" -- depth of 1
-}
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+    name = "yarascanner_scan_activeprocesses"
+    description = "Adds running processes to list of paths to scan"
+    type = "boolean"
+    default = true
+
+    [[globals]]
+    name = "yarascanner_scan_appdata"
+    description = "Recurse through each user's appdata for binaries to scan (windows only)"
+    type = "boolean"
+    default = false
+
+    [[globals]]
+    name = "yarascanner_max_size"
+    description = "Largest size of binary in Kb"
+    type = "number"
+    default = 5000
+
+    [[globals]]
+    name = "yarascanner_additional_paths" 
+    description = "Additional paths to scan"
+    type = "string"
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[args]]
+    name = "scan_activeprocesses"
+    description = "Adds running processes to list of paths to scan"
+    type = "boolean"
+    default = true
+
+    [[args]]
+    name = "scan_appdata"
+    description = "Recurse through each user's appdata for binaries to scan (windows only)"
+    type = "boolean"
+    default = false
+
+    [[args]]
+    name = "max_size"
+    description = "Largest size of binary in Kb"
+    type = "number"
+    default = 5000
+
+    [[args]]
+    name = "additional_paths" 
+    description = "Additional paths to scan"
+    type = "string"
+
+]=]
 
 
--- Provide additional paths below
-if hunt.env.is_windows() then
-    additionalpaths = {
-        'c:\\windows\\system32\\calc.exe'
-    }
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
 
-elseif hunt.env.is_linux() then
-    additionalpaths = {
-        '/bin/cat',
-        '/bin/tar'
-    }
+scan_activeprocesses = hunt.arg.boolean("scan_activeprocesses") or hunt.global.boolean("yarascanner_scan_activeprocesses", false, true)
 
-elseif hunt.env.is_macos() then
-    additionalpaths = {
-        '/bin/sh',
-        '/bin/ls'
-    }
-end
-add_opts = {
-    "files",
-    "size<5mb" -- any file below this size
-}
+scan_appdata = hunt.arg.boolean("scan_appdata") or hunt.global.boolean("yarascanner_scan_appdata", "boolean", "global", false, false)
+
+max_size = hunt.arg.number("max_size") or hunt.global.number("yarascanner-max_size", false, 5000)
+
+additional_paths = hunt.arg.string("additional_paths", false) or hunt.global.string("yarascanner_additional_paths", false)
+
+hunt.debug(f"Inputs: scan_activeprocesses=${scan_activeprocesses}, scan_appdata=${scan_appdata}, max_size=${max_size}, additional_paths=${additional_paths}")
 
 -- #region bad_rules
-bad_rules = [==[
+bad_rules = [=[
 rule Base64d_PE
 {
 	meta:
@@ -622,12 +658,12 @@ rule shrug2_ransomware {
    condition:
       ( uint16(0) == 0x5a4d and filesize < 2000KB ) and all of them
 }
-]==]
+]=]
 -- #endregion
 
 
 -- #region suspicious_rules
-suspicious_rules = [==[
+suspicious_rules = [=[
 /*
     These rules are the GNU General Public License. See <http://www.gnu.org/licenses/>.
 */
@@ -1267,11 +1303,11 @@ rule cred_local {
     condition:
         any of them
 }
-]==]
+]=]
 -- #endregion
 
 -- #region info_rules
-info_rules = [==[
+info_rules = [=[
 rule keylogger_strings {
     meta:
         author = "x0r"
@@ -1386,19 +1422,18 @@ rule embedded_url {
     condition:
         $url_regex
 }
-]==]
+]=]
 -- #endregion
 
 
---[[ SECTION 2: Functions --]]
-
+--[=[ SECTION 2: Functions ]=]
 
 function is_executable(path)
-    --[[
+    --[=[
         Check if a file is an executable (PE or ELF) by magic number. 
         Input:  [string]path
         Output: [bool] Is Executable
-    ]] 
+    ]=] 
     magicnumbers = {
         "MZ",
         ".ELF"
@@ -1425,12 +1460,19 @@ function is_executable(path)
 end
 
 
---[[ SECTION 3: Collection --]]
+function string_to_list(str)
+    -- Converts a comma seperated list to a lua list object
+    list = {}
+    for s in string.gmatch(str, '([^,]+)') do
+        table.insert(list, s)
+    end
+    return list
+end
+
+--[=[ SECTION 3: Collection ]=]
 
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
-
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
 -- Load Yara rules
 yara_bad = hunt.yara.new()
@@ -1442,21 +1484,35 @@ yara_suspicious:add_rule(suspicious_rules)
 yara_info = hunt.yara.new()
 yara_info:add_rule(info_rules)
 
+opts = {
+    "files",
+    f"size<=${max_size}kb", -- any file below this size
+}
 
 -- Add active processes
 paths = {} -- add to keys of list to easily unique paths
-if scanactiveprocesses then
+if scan_activeprocesses then
     procs = hunt.process.list()
-    for i, proc in pairs(procs) do
-        --hunt.debug("Adding processpath["..i.."]: " .. proc:path())
-        paths[proc:path()] = true -- add to keys of list to unique paths
+    for i, p in pairs(procs) do
+        proc = p
+        file = hunt.fs.ls(proc:path(), opts)
+        if #file == 1 and file[1]:size() < max_size * 1000 then
+            --hunt.debug(f"Adding processpath[${i}]: ${proc:path()} [${file[1]:name()}] size=${file[1]:size()}")
+            paths[proc:path()] = true -- add to keys of list to unique paths
+        end
     end
 end
 
 -- Add appdata paths
-if scanappdata then
-    for _, userfolder in pairs(hunt.fs.ls("C:\\Users", {"dirs"})) do
-        for _, path in pairs(hunt.fs.ls(userfolder:path().."\\appdata\\roaming", appdata_opts)) do
+appdata_opts = {
+    "files",
+    f"size<${max_size}kb", -- any file below this size
+    "recurse=1" -- depth of 1
+}
+if scan_appdata then
+    for _, u in pairs(hunt.fs.ls("C:\\Users", {"dirs"})) do
+        userfolder = u
+        for _, path in pairs(hunt.fs.ls(f"${userfolder:path()}\\appdata\\roaming", appdata_opts)) do
             if is_executable(path:path()) then
                 paths[path:path()] = true
             end
@@ -1465,28 +1521,37 @@ if scanappdata then
 end
 
 -- Add additional paths
-for i, path in pairs(additionalpaths) do
-    files = hunt.fs.ls(path, add_opts)
-    for _,path2 in pairs(files) do
-        if is_executable(path2:path()) then
-            paths[path2:path()] = true
+if additional_paths then
+    more_paths = string_to_list(additional_paths)
+    
+    for i, path in pairs(more_paths) do
+        files = hunt.fs.ls(path, opts)
+        for _,path2 in pairs(files) do
+            if is_executable(path2:path()) then
+                paths[path2:path()] = true
+            end
         end
     end
 end
+
+
 
 matchedpaths = {}
 
 -- Scan all paths with Yara signatures
 n=1
 for path, i in pairs(paths) do
-    hunt.debug('['..n..'] Scanning ' .. path)
+    if debug and n > 3 then
+        break
+    end
+    hunt.debug(f"[${n}] Scanning ${path}")
     n=n+1
     hunt.verbose("Scanning with bad_rules")
     for _, signature in pairs(yara_bad:scan(path)) do
         if not hash then
             hash = hunt.hash.sha1(path)
         end
-        hunt.log('Matched yara rule [BAD]' .. signature .. ' on: ' .. path .. " <"..hash..">")
+        hunt.log(f"Matched yara rule [BAD]${signature} on: ${path} <${hash}>")
         bad = true
 		matchedpaths[path] = true
     end
@@ -1495,7 +1560,7 @@ for path, i in pairs(paths) do
         if not hash then
             hash = hunt.hash.sha1(path)
         end
-        hunt.log('Matched yara rule [SUSPICIOUS]' .. signature .. ' on: ' .. path .. " <"..hash..">")
+        hunt.log(f"Matched yara rule [SUSPICIOUS]${signature} on: ${path} <${hash}>")
         suspicious = true
 		matchedpaths[path] = true
     end
@@ -1504,7 +1569,7 @@ for path, i in pairs(paths) do
         if not hash then
             hash = hunt.hash.sha1(path)
         end
-        hunt.log('Matched yara rule [INFO]' .. signature .. ' on: ' .. path .. " <"..hash..">")
+        hunt.log(f"Matched yara rule [INFO]${signature} on: ${path} <${hash}>")
         lowrisk = true
     end
     hash = nil
@@ -1513,6 +1578,9 @@ end
 -- Add bad and suspicious files to Artifacts list for analysis
 n = 0
 for path,i in pairs(matchedpaths) do
+    if debug and n > 3 then
+        break
+    end
 	-- Create a new artifact
 	artifact = hunt.survey.artifact()
 	artifact:exe(path)
@@ -1536,6 +1604,6 @@ else
     hunt.status.good()
 end
 
-hunt.log("Yara scan completed. Result="..result.." Added "..n.." paths (all bad and suspicious matches) to Artifacts for processing and retrieval.")
+hunt.log(f"Yara scan completed. Result=${result} Added ${n} paths (all bad and suspicious matches) to Artifacts for processing and retrieval.")
 
 

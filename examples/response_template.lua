@@ -2,12 +2,12 @@
 filetype = "Infocyte Extension"
 
 [info]
-name = "Collection Template"
-type = "Collection"
-description = """Example script show format, style, and options for gathering
-     additional data from a host."""
+name = "Response Template"
+type = "Response"
+description = """Example script show format, style, and options for commiting
+        an action or change against a host."""
 author = "Infocyte"
-guid = "f8e44229-4d8d-4909-b148-58130b660077"
+guid = "b5f18032-6749-4bef-80d3-8094dca66798"
 created = "2019-09-19"
 updated = "2020-09-10"
 
@@ -31,11 +31,6 @@ updated = "2020-09-10"
 # Runtime arguments
 
     [[args]]
-    name = "debug"
-    description = "Print debug information"
-    type = "boolean"
-    default = false
-    required = false
 
 ]=]
 
@@ -44,50 +39,34 @@ updated = "2020-09-10"
 -- hunt.global(name = <string>, isRequired = <boolean>, [default])
 
 local debug = hunt.global.boolean("debug", false, false)
-proxy = hunt.global.string("proxy", false)
-
-debug = hunt.arg.boolean("debug", false, false)
+proxy = hunt.global.string("proxy", false, false)
 
 
 --[=[ SECTION 2: Functions ]=]
 
 
---[=[ SECTION 3: Collection ]=]
-
+--[=[ SECTION 3: Actions ]=]
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
 hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
-
 -- All OS-specific instructions should be behind an 'if' statement
 if hunt.env.is_windows() then
-    -- Insert your Windows code
+    -- Insert your Windows Code
+
 
 elseif hunt.env.is_macos() then
     -- Insert your MacOS Code
 
 
 elseif hunt.env.is_linux() or hunt.env.has_sh() then
-    -- Insert your POSIX (linux) Code
+    -- Insert your POSIX-compatible (linux) Code
 
 
 else
     hunt.warn(f"Not a compatible operating system for this extension [${host_info:os()}]")
 end
 
-
--- EXAMPLE RESULTS
-result = "good"
-
--- Set the returned threat status of the host based on the string in "result"
-if string.find(result, "good") then
-    -- if result == "test", set extension status to good
-    hunt.status.good()
-elseif string.find(result, "bad") then
-    hunt.status.bad()
-else
-    hunt.status.unknown()
-end
 
 hunt.log(f"Result: Extension successfully executed on ${host_info:hostname()}")

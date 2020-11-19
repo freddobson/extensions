@@ -1,25 +1,56 @@
---[[
-    Infocyte Extension
-    Name: Amcache Parser
-    Type: Collection
-    Description: | Uses Zimmerman's Amcache parser to parse Amcache and
-        adds those entries to artifacts for analysis |
-    Author: Infocyte
-    Guid: 09660065-7f58-4d51-9e0b-1427d0e42eb3
-    Created: 20191121
-    Updated: 20200318 (Gerritz)
---]]
+--[=[ 
+filetype = "Infocyte Extension"
 
---[[ SECTION 1: Inputs --]]
-debug = false
-differential = true -- Will save last scan locally and only add new items on subsequent scans.
-proxy = nil -- "myuser:password@10.11.12.88:8888"
+[info]
+name = "Amcache Parser"
+type = "Collection"
+description = """Uses Zimmerman's Amcache parser to parse Amcache and
+        adds those entries to artifacts for analysis"""
+author = "Infocyte"
+guid = "09660065-7f58-4d51-9e0b-1427d0e42eb3"
+created = "2019-11-21"
+updated = "2020-09-10"
 
+## GLOBALS ##
+# Global variables accessed within extensions via hunt.global('name')
+
+    [[globals]]
+    name = "proxy"
+    description = "Proxy info. Example: myuser:password@10.11.12.88:8888"
+    type = "string"
+    required = false
+
+    [[globals]]
+    name = "debug"
+    description = "Print debug information"
+    type = "boolean"
+    default = false
+    required = false
+
+## ARGUMENTS ##
+# Runtime arguments are accessed within extensions via hunt.arg('name')
+
+    [[args]]
+    name = "differential"
+    description = "Gets new entries only. Maintains CSV on disk."
+    type = "boolean"
+    default = true
+
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
+
+differential = hunt.arg.boolean("differential", false, true) -- Will save last scan locally and only add new items on subsequent scans.
+
+local debug = hunt.global.boolean("debug", false, false)
+proxy = hunt.global.string("proxy", false)
 
 url = 'https://infocyte-support.s3.us-east-2.amazonaws.com/extension-utilities/AmcacheParser.exe'
 amcacheparser_sha1 = 'A17EEF27F3EB3F19B15E2C7E557A7B4FB2257485' -- hash validation of amcashparser.exe (version 1.4) at url
 
---[[ SECTION 2: Functions --]]
+--[=[ SECTION 2: Functions ]=]
 
 function is_executable(path)
     magicnumbers = {
@@ -66,7 +97,7 @@ function parse_csv(path, sep)
     local csvFile = {}
     local file,msg = io.open(path, "r")
     if not file then
-        hunt.error("AmcacheParser failed: ".. msg)
+        hunt.error("AmcacheParser failed: "..msg)
         return nil
     end
     header = {}
@@ -100,14 +131,13 @@ function make_timestamp(dateString)
     return convertedTimestamp
 end
 
---[[ SECTION 3: Collection --]]
+--[=[ SECTION 3: Collection ]=]
 
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
 if not hunt.env.is_windows() then
-    hunt.warn("Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    hunt.warn(f"Not a compatible operating system for this extension [${host_info:os()}]")
     return
 end
 
@@ -117,8 +147,8 @@ tmppath = os.getenv("systemroot").."\\temp\\ic"
 binpath = tmppath.."\\AmcacheParser.exe"
 outpath = tmppath.."\\amcache.csv"
 if not path_exists(tmppath) then 
-    print("Creating directory: "..tmppath)
-    os.execute("mkdir "..tmppath)
+    print(f"Creating directory: ${tmppath}")
+    os.execute(f"mkdir ${tmppath}")
 end
 
 -- Check if we have amcacheparser.exe already and validate hash
@@ -129,21 +159,21 @@ if path_exists(binpath) then
     if sha1 == amcacheparser_sha1:lower() then
         download = false
     else
-        hunt.warn('Amcache Parser on disk ['..sha1..'] did not match expected hash: '..amcacheparser_sha1:lower()..'. Downloading new.')
+        hunt.warn(f"Amcache Parser on disk [${sha1}] did not match expected hash: ${amcacheparser_sha1:lower()}. Downloading new.")
         os.remove(binpath)
     end
 end
 
 -- Download Zimmerman's AmCacheParser
 if download then
-    hunt.debug("Downloading AmCacheParser.exe from ".. url)
+    hunt.debug(f"Downloading AmCacheParser.exe from ${url}")
     client = hunt.web.new(url)
     if proxy then
         client:proxy(proxy)
     end
     client:download_file(binpath)
     if not path_exists(binpath) then
-        hunt.error("Could not download "..url)
+        hunt.error(f"Could not download ${url}")
         return
     end
 end
@@ -158,34 +188,30 @@ if differential and path_exists(outpath) then
         if not ts then
             ts = t
         elseif ts < t then
-            print("Newest AmCache timestamp: "..os.date("%c", t))
+            print(f"Newest AmCache timestamp: ${os.date('%c', t)}")
             ts = t
         end 
         oldhashlist[v["SHA1"]] = true
     end
-    hunt.debug("Last AmCache Entry Timestamp from previous scan: "..os.date("%c", ts))
+    hunt.debug(f"Last AmCache Entry Timestamp from previous scan: ${os.date('%c', ts)}")
 end
 
 -- Execute amcacheparser
 hunt.debug("Executing Amcache Parser...")
-os.execute(binpath..' -f "C:\\Windows\\AppCompat\\Programs\\Amcache.hve" --csv '..tmppath.."\\temp > "..tmppath.."\\icextensions.log")
-file, msg = io.open(tmppath.."\\icextensions.log", "r")
+os.execute(f"${binpath} -f C:\\Windows\\AppCompat\\Programs\\Amcache.hve --csv ${tmppath}\\temp > ${tmppath}\\icextensions.log")
+file, msg = io.open(f"${tmppath}\\icextensions.log", "r")
 if file then
-    if debug then
-        hunt.debug(file:read("*all"))
-    else 
-       --print(file:read("*all")) 
-    end
+    hunt.debug(file:read("*all"))
     file:close()
-    os.remove(tmppath.."\\icextensions.log")
+    os.remove(f"${tmppath}\\icextensions.log")
 else 
-    hunt.error("AmcacheParser failed to run: "..msg)
+    hunt.error(f"AmcacheParser failed to run: ${msg}")
     return
 end
 
 -- Parse output using powershell
-script = '$temp = "'..tmppath..'"\n'
-script = script..[==[
+script = f"$temp = ${tmppath}\n"
+script = script..[=[
 $outpath = "$temp\amcache.csv"
 Get-ChildItem "$temp\temp" -filter *Amcache*.csv | Foreach-Object { 
     $a += gc $_.fullname | convertfrom-csv | where { 
@@ -193,13 +219,13 @@ Get-ChildItem "$temp\temp" -filter *Amcache*.csv | Foreach-Object {
 }
 $a | Foreach-Object { 
     if ($_.FileKeyLastWriteTimestamp) {
-        $_.FileKeyLastWriteTimestamp = Get-Date ([DateTime]$_.FileKeyLastWriteTimestamp).ToUniversalTime() -format "o"
+        $_.FileKeyLastWriteTimestamp = Get-Date ([DateTime]$_.FileKeyLastWriteTimestamp).ToUniversalTime() -format "yyyy-MM-dd hh:mm:ss"
     }
 }
 $a = $a | Sort-object FileKeyLastWriteTimestamp,sha1,fullpath -unique -Descending
 $a | Export-CSV $outpath -Delimiter "|" -NoTypeInformation -Force
 Remove-item "$temp\temp" -Force -Recurse
-]==]
+]=]
 hunt.debug("Initiatializing Powershell to parse output")
 out, err = hunt.env.run_powershell(script)
 if out then
@@ -207,7 +233,7 @@ if out then
         hunt.debug(out)
     end
 else
-    hunt.error("Failed: Could not parse AmCache output with Powershell.\n"..err)
+    hunt.error(f"Failed: Could not parse AmCache output with Powershell.\n${err}")
     return
 end
 
@@ -216,8 +242,11 @@ end
 if path_exists(outpath) then
     hunt.debug("Parsing Powershell Output...")
     csv = parse_csv(outpath, sep)
+    if not csv then
+        hunt.error(f"Failed: Could not parse CSV: ${outpath}")
+    end
 else
-    hunt.error("Failed: Could not find powershell output csv at "..outpath)
+    hunt.error(f"Failed: Could not find powershell output csv at ${outpath}")
     return
 end
 
@@ -226,18 +255,18 @@ end
 if differential and ts then
     newitems = #csv - #csvold
     if newitems > 0 then
-        hunt.debug("Differential scan: Adding "..newitems.." new Amcache entries found since: "..os.date("%c", ts))
+        hunt.debug(f"Differential scan: Adding ${newitems} new Amcache entries found since: ${os.date('%c', ts)}")
     else
-        hunt.debug("Differential scan: No new entries found after: "..os.date("%c", ts))
+        hunt.debug(f"Differential scan: No new entries found after: ${os.date('%c', ts)}")
     end
 elseif differential then
-    hunt.debug("Differential Scan: No previous scan data found, analyzing all "..#csv.." items to establish baseline.")
+    hunt.debug(f"Differential Scan: No previous scan data found, analyzing all ${#csv} items to establish baseline.")
 end
 paths = {}
 for _, item in pairs(csv) do
     -- dedup
     if not oldhashlist[item["SHA1"]] and not paths[item["SHA1"]] and is_executable(item["FullPath"]) and (nil ~= item["FullPath"]) then
-        hunt.log("Adding Artifact: "..item["FullPath"].." ["..item["SHA1"].."] executed on "..item["FileKeyLastWriteTimestamp"])
+        hunt.log(f"Adding Artifact: ${item['FullPath']} [${item['SHA1']}] executed on ${item['FileKeyLastWriteTimestamp']}")
         paths[item["SHA1"]] = true
         -- Create a new artifact
         artifact = hunt.survey.artifact()
@@ -253,5 +282,3 @@ end
 -- Set Status (not really necessary since bad items will be flagged in artifacts)
 hunt.status.good()
 hunt.debug("Amcache Parser completed.")
-
-

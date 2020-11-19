@@ -1,8 +1,10 @@
---[[
-    Infocyte Extension
-    Name: Memory Extraction
-    Type: Action
-    Description: | Uses winpmem/linpmem to dump full physical memory and
+--[=[
+filetype = "Infocyte Extension"
+
+[info]
+name = "Memory Extraction"
+type = "Response"
+description = """Uses winpmem/linpmem to dump full physical memory and
        stream it to an S3 bucket, ftp server, or smb share. If output path not
        specified, will dump to local temp folder.
        Source:
@@ -10,29 +12,75 @@
        http://releases.rekall-forensic.com/v1.5.1/linpmem-2.1.post4
        http://releases.rekall-forensic.com/v1.5.1/osxpmem-2.1.post4.zip
        Instructions:
-       https://holdmybeersecurity.com/2017/07/29/rekall-memory-analysis-framework-for-windows-linux-and-mac-osx/ |
-    Author: Infocyte
-    Guid: 89abebc6-d0db-4eba-b771-6a2652033581
-    Created: 9-19-2019
-    Updated: 9-19-2019 (Gerritz)
---]]
+       https://holdmybeersecurity.com/2017/07/29/rekall-memory-analysis-framework-for-windows-linux-and-mac-osx/"""
+author = "Infocyte"
+guid = "89abebc6-d0db-4eba-b771-6a2652033581"
+created = "2019-9-19"
+updated = "2020-09-10"
 
---[[ SECTION 1: Inputs --]]
+## GLOBALS ##
+# Global variables
 
--- S3 Bucket (Destination)
-s3_keyid = nil
-s3_secret = nil
-s3_region = 'us-east-2' -- US East (Ohio)
-s3_bucket = 'test-extensions'
-s3path_modifier = "memory" -- /filename will be appended
---S3 Path Format: <s3bucket>:<instancename>/<date>/<hostname>/<s3path_modifier>/<filename>
+    [[globals]]
+    name = "s3_keyid"
+    description = "S3 Bucket key Id for uploading"
+    type = "string"
 
-proxy = nil -- "myuser:password@10.11.12.88:8888"
+    [[globals]]
+    name = "s3_secret"
+    description = "S3 Bucket key Secret for uploading"
+    type = "secret"
+
+    [[globals]]
+    name = "s3_region"
+    description = "S3 Bucket key Id for uploading. Example: 'us-east-2'"
+    type = "string"
+    required = true
+
+    [[globals]]
+    name = "s3_bucket"
+    description = "S3 Bucket name for uploading"
+    type = "string"
+    required = true
+
+    [[globals]]
+    name = "proxy"
+    description = "Proxy info. Example: myuser:password@10.11.12.88:8888"
+    type = "string"
+    required = false
+
+    [[globals]]
+    name = "debug"
+    description = "Print debug information"
+    type = "boolean"
+    default = false
+    required = false
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[args]]
+
+
+]=]
+
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
+
 
 hash_image = false -- set to true if you need the sha1 of the memory image
 timeout = 6*60*60 -- 6 hours to upload?
 
---[[ SECTION 2: Functions --]]
+local debug = hunt.global.boolean("debug", false, false)
+proxy = hunt.global.string("proxy", false)
+s3_keyid = hunt.global.string("s3_keyid", false)
+s3_secret = hunt.global.string("s3_secret", false)
+s3_region = hunt.global.string("s3_region", true)
+s3_bucket = hunt.global.string("s3_bucket", true)
+s3path_modifier = "memory"
+
+--[=[ SECTION 2: Functions ]=]
 
 function tempfolder()
     -- Returns OS-specific temp folder
@@ -50,18 +98,11 @@ function tempfolder()
     end
 end
 
---[[ SECTION 3: Actions --]]
 
--- Check required inputs
-if not s3_region or not s3_bucket then
-    hunt.error("s3_region and s3_bucket not set")
-    return
-end
+--[=[ SECTION 3: Actions ]=]
 
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
-
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 
 -- Download os-specific pmem
 mempath = tempfolder().."/physmem.map"
@@ -90,7 +131,7 @@ elseif hunt.env.is_macos() then
         client:proxy(proxy)
     end
     client:download_file(pmemzippath)
-    os.execute("unzip "..pmemzippath)
+    os.execute(f"unzip ${pmemzippath}")
     pmempath = "./osxpmem.app/osxpmem"
     os.execute("kextutil -t osxpmem.app/MacPmem.kext/")
     os.execute("chown -R root:wheel osxpmem.app/")
@@ -110,17 +151,17 @@ elseif hunt.env.is_linux() or hunt.env.has_sh() then
     os.execute("chmod +x "..pmempath)
 
 else
-    hunt.warn("WARNING: Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    hunt.warn(f"WARNING: Not a compatible operating system for this extension [${host_info:os()}]")
     return
 end
 
 
 -- Dump Memory to disk
-hunt.debug("Memory dump on "..host_info:os().." host started to local path "..mempath)
+hunt.debug(f"Memory dump on ${host_info:os()} host started to local path ${mempath}")
 -- os.execute("winpmem.exe --output - --format map | ")    --split 1000M
-result = os.execute(pmempath.." --output "..mempath.." --format map --split 500M")
+result = os.execute(f"${pmempath} --output ${mempath} --format map --split 500M")
 if not result then
-  hunt.error("Winpmem driver failed. [Error: "..result.."]")
+  hunt.error(f"Winpmem driver failed. [Error: ${result}]")
   exit()
 end
 
@@ -128,9 +169,9 @@ end
 -- Scans have 1 hour timeouts currently so we're gunna spawn a background task to
 -- upload it in case it takes a few hours.
 if s3_keyid then
-    script = 'recovery = hunt.recovery.s3("'..s3_keyid..'", "'..s3_secret..'", "'..s3_region..'","'..s3_bucket..'")\n'
+    script = f"recovery = hunt.recovery.s3('${s3_keyid}', '${s3_secret}', '${s3_region}','${s3_bucket}')\n"
 else
-    script = 'recovery = hunt.recovery.s3(nil, nil, "'..s3_region..'","'..s3_bucket..'")\n'
+    script = f"recovery = hunt.recovery.s3(nil, nil, '${s3_region}','${s3_bucket}')\n"
 end
 
 instance = hunt.net.api()
@@ -140,7 +181,10 @@ elseif instance:match("infocyte") then
     -- get instancename
     instancename = instance:match("(.+).infocyte.com")
 end
-s3path_preamble = instancename..'/'..os.date("%Y%m%d")..'/'..host_info:hostname().."/"..s3path_modifier
+s3path_preamble = f"${instancename}/${os.date('%Y%m%d')}/${host_info:hostname()}/${s3path_modifier}"
+
+hunt.log("Uploaded evidence can be accessed here:")
+hunt.log(f"https://s3.console.aws.amazon.com/s3/buckets/${s3_bucket}/${s3path_preamble}/?region=${s3_region}&tab=overview")
 
 for _, path in pairs(hunt.fs.ls(tempfolder())) do
     if (path:path()):match("physmem") then
@@ -150,10 +194,11 @@ for _, path in pairs(hunt.fs.ls(tempfolder())) do
             hash = 'Hashing Skipped'
         end
         s3path = s3path_preamble.."/"..path:name()
-        link = "https://"..s3_bucket..".s3."..s3_region..".amazonaws.com/" .. s3path
-        hunt.log("Scheduling the Upload of Memory Dump "..s3path.." (sha1=".. hash .. ") to S3 at "..link)
-        script = script .. 'recovery:upload_file([['..path:path()..']], "'..s3path..'")\n'
-        script = script .. 'os.remove([['..path:path()..']])\n'
+        link = f"https://${s3_bucket}.s3.${s3_region}.amazonaws.com/${s3path}"
+        hunt.log(f"Scheduling the Upload of Memory Dump ${s3path} (sha1=${hash}) to S3 at:")
+        hunt.log(link)
+        script = script .. f"recovery:upload_file([[${path:path()}]], '${s3path}')\n"
+        script = script .. f"os.remove([[${path:path()}]])\n"
     end
 end
 
@@ -167,10 +212,10 @@ if hunt.env.is_windows() then
     scriptfile:close()
     -- Retain survey for background task
     bgsurveypath = 'C:\\windows\\temp\\survey2.exe'
-    os.execute('Powershell.exe -nologo -nop -command "Copy-Item C:\\windows\\temp\\s1.exe  -Destination '..bgsurveypath..' -Force')
+    os.execute(f'Powershell.exe -nologo -nop -command "Copy-Item C:\\windows\\temp\\s1.exe  -Destination ${bgsurveypath} -Force')
 
     -- Use Scheduled Tasks
-    os.execute('SCHTASKS /CREATE /SC ONCE /RU "SYSTEM" /TN "Infocyte\\Upload" /TR "cmd.exe /c '..bgsurveypath..' -r '..timeout..' --only-extensions --extensions '..scriptpath..'" /ST 23:59 /F')
+    os.execute(f"SCHTASKS /CREATE /SC ONCE /RU 'SYSTEM' /TN 'Infocyte\\Upload' /TR 'cmd.exe /c ${bgsurveypath} -r ${timeout} --only-extensions --extensions '${scriptpath}' /ST 23:59 /F")
     os.execute('SCHTASKS /RUN /TN "Infocyte\\Upload"')
 
 else
@@ -182,7 +227,7 @@ else
 
     -- Retain survey for background task
     bgsurveypath = '/tmp/survey2.bin'
-    os.execute("sudo chmod +x "..bgsurveypath)
+    os.execute(f"sudo chmod +x ${bgsurveypath}")
 
     if hunt.env.is_macos() then
         -- Enable at command
@@ -199,7 +244,7 @@ else
 
     end
     -- use at command
-    os.execute('#!/bin/sh\n"'..bgsurveypath..' -r '..timeout..' --only-extensions --extensions '..scriptpath..'" > /tmp/icat.sh')
+    os.execute(f"#!/bin/sh\n${bgsurveypath} -r ${timeout} --only-extensions --extensions '${scriptpath}' > /tmp/icat.sh")
     os.execute('sudo at now +1 minutes -f /tmp/icat.sh')
 end
 

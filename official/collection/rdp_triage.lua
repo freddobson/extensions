@@ -1,31 +1,68 @@
---[[
-    Infocyte Extension
-    Name: RDP Triage
-    Type: Collection
-    Description: | RDP Lateral Movement
-        https://jpcertcc.github.io/ToolAnalysisResultSheet/details/mstsc.htm
-        Gathers and combines 4624,4778,4648 logon events, rdp session 
-        events 21,24,25, and 1149 with processes started (4688) by those sessions |
-    Author: Infocyte
-    Guid: f606ff51-4e99-4687-90a7-43aaabae8634
-    Created: 20200301
-    Updated: 20200326
---]]
+--[=[
+filetype = "Infocyte Extension"
+
+[info]
+name = "RDP Triage"
+type = "Collection"
+description = """RDP Lateral Movement
+    https://jpcertcc.github.io/ToolAnalysisResultSheet/details/mstsc.htm
+    Gathers and combines 4624,4778,4648 logon events, rdp session 
+    events 21,24,25, and 1149 with processes started (4688) by those sessions"""
+author = "Infocyte"
+guid = "f606ff51-4e99-4687-90a7-43aaabae8634"
+created = "2020-03-01"
+updated = "2020-09-10"
+
+## GLOBALS ##
+# Global variables
+
+    [[globals]]
+    name = "trailing_days"
+    description = "Number of days to go back in the logs"
+    type = "number"
+    default = 60
+    required = false
+
+    [[globals]]
+    name = "debug"
+    description = "Print debug information"
+    type = "boolean"
+    default = false
+    required = false
+
+## ARGUMENTS ##
+# Runtime arguments
+
+    [[Args]]
+    name = "trailing_days"
+    description = "Number of days to go back in the logs"
+    type = "number"
+    required = false
+
+]=]
 
 
---[[ SECTION 1: Inputs --]]
-trailing_days = 60
-debug = false
+--[=[ SECTION 1: Inputs ]=]
+-- hunt.arg(name = <string>, isRequired = <boolean>, [default])
+-- hunt.global(name = <string>, isRequired = <boolean>, [default])
 
---[[ SECTION 2: Functions --]]
+trailing_days = hunt.arg.number("trailing_days") or hunt.global.number("trailing_days", false, 60)
+local debug = hunt.global.boolean("debug", false, false)
+
+if hunt.global.boolean("disable_powershell", false, false) then
+    hunt.error("disable_powershell global is set. Cannot run extension without powershell")
+    return
+end
+
+--[=[ SECTION 2: Functions ]=]
 
 function parse_csv(path, sep)
-    --[[
+    --[=[
         Parses a CSV on disk into a lua list.
         Input:  [string]path -- Path to csv on disk
                 [string]sep -- CSV seperator to use. defaults to ','
         Output: [list]
-    ]] 
+    ]=] 
     sep = sep or ','
     local csvFile = {}
     local file,msg = io.open(path, "r")
@@ -64,16 +101,14 @@ function parse_csv(path, sep)
 end
 
 
---[[ SECTION 3: Collection --]]
+--[=[ SECTION 3: Collection ]=]
 
 
 -- All Lua and hunt.* functions are cross-platform.
 host_info = hunt.env.host_info()
-domain = host_info:domain() or "N/A"
-hunt.debug("Starting Extention. Hostname: " .. host_info:hostname() .. ", Domain: " .. domain .. ", OS: " .. host_info:os() .. ", Architecture: " .. host_info:arch())
-
+hunt.debug(f"Starting Extention. Hostname: ${host_info:hostname()} [${host_info:domain()}], OS: ${host_info:os()}")
 if not hunt.env.is_windows() then
-    hunt.warn("Not a compatible operating system for this extension [" .. host_info:os() .. "]")
+    hunt.warn(f"Not a compatible operating system for this extension [${host_info:os()}]")
 end
 
 tmppath = os.getenv("systemroot").."\\temp\\ic"
@@ -242,7 +277,7 @@ script = script..[==[
     return $true
 ]==]
 
-
+hunt.debug("Running powershell script")
 out, err = hunt.env.run_powershell(script)
 if out then 
     hunt.verbose(out)
@@ -264,42 +299,44 @@ if not debug then
 end
 
 n = 0
-if rdp_processes then 
+if rdp_processes and #rdp_processes > 0 then 
     for i,v in pairs(rdp_processes) do 
         -- Create a new artifact
         artifact = hunt.survey.artifact()
         artifact:exe(v['ProcessPath'])
-        artifact:type("RDP Process ["..v['EventId'].."]")
+        artifact:type(f"RDP Process [${v['EventId']}]")
         artifact:params(v['Commandline'])
         artifact:executed(v['TimeCreated'])
         hunt.survey.add(artifact)
         n = n + 1
-        hunt.log("RDP Process ["..v['EventId'].."]"..": eventtime="..v['TimeCreated']..", ip=".. v['IP']..", username=".. v['domain'].."\\"..v['Username']..", sid=".. v['SecurityId']..", pid=".. v['ProcessId']..", path=".. v['ProcessPath'] ..", commandline=".. v['Commandline']..", ppid=".. v['ParentProcessId']..", pppath=".. v['ParentProcessPath']..", logontime=".. v['SessionLogonTime'])
+        
+        hunt.log(f"RDP Process [${v['EventId']}]: eventtime=${v['TimeCreated']}, ip=${v['IP']}, username=${v['domain']}\\${v['Username']}, sid=${v['SecurityId']}, pid=${v['ProcessId']}, path=${v['ProcessPath']}, commandline=${v['Commandline']}, ppid=${v['ParentProcessId']}, pppath=${v['ParentProcessPath']}, logontime=${v['SessionLogonTime']}")
     end
 else
     hunt.warn("No processes found associated with RDP sessions. Logging may not be enabled for EventId 4688 or 4624")
 end
 
-if rdp_localSessionManager then 
+if rdp_localSessionManager and #rdp_localSessionManager > 0 then 
     for i,v in pairs(rdp_localSessionManager) do 
-        hunt.log("RDP Session ["..v['EventId'].."]"..": eventtime="..v['TimeCreated']..", ip=".. v['IP']..", username=".. v['domain'].."\\"..v['Username']..", message="..v['Action'])
+        hunt.log(f"RDP Session [${v['EventId']}]: eventtime=${v['TimeCreated']}, ip=${v['IP']}, username=${v['domain']}\\${v['Username']}, message=${v['Action']}")
     end
 else 
     hunt.warn("No remote RDP sessions found. Logging may not be enabled for EventId 21 or 24")
 end
 
-if rdp_remoteConnectionManager then
+if rdp_remoteConnectionManager and #rdp_remoteConnectionManager > 0 then
     for i,v in pairs(rdp_remoteConnectionManager) do 
-        hunt.log("RDP Connection Attempt ["..v['EventId'].."]"..", eventtime="..v['TimeCreated']..", ip="..v['IP']..", username="..v['domain'].."\\"..v['Username'])
+        hunt.log(f"RDP Connection Attempt [${v['EventId']}], eventtime=${v['TimeCreated']}, ip=${v['IP']}, username=${v['domain']}\\${v['Username']}")
     end
 else 
     hunt.warn("No remote RDP connection attempts found. Logging may not be enabled for EventId 1149")
 end
 
-if rdp_logons then
+if rdp_logons and #rdp_logons > 0 then
     for i,v in pairs(rdp_logons) do 
-        hunt.log("RDP Logon ["..v['EventId'].."]"..": eventtime="..v['TimeCreated']..", ip="..v['IP']..", username=".. v['domain'].."\\"..v['Username']..", sid="..v['SecurityId']..", logontype="..v['LogonType'])
+        hunt.log(f"RDP Logon [${v['EventId']}]: eventtime=${v['TimeCreated']}, ip=${v['IP']}, username=${v['domain']}\\${v['Username']}, sid=${v['SecurityId']}, logontype=${v['LogonType']}")
     end
 else
     hunt.warn("No remote RDP logon events found. Logging may not be enabled for EventId 4624")
 end
+
