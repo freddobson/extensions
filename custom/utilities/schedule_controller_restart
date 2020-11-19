@@ -1,0 +1,6 @@
+if hunt.env.is_windows() and hunt.env.has_powershell() then
+  schtsk = assert(io.popen("schtasks.exe /create /tn \"Restart Controller\" /tr \"powershell.exe -c restart-service huntControllerSvc,huntIntegrationSvc\" /sc daily /mo 7 /st 00:01 /ru System", "r"))
+  status = assert(schtsk:read('*a'))
+  hunt.log(status)
+  hunt.status.good()
+end
